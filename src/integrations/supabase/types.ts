@@ -14,16 +14,424 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      commitments: {
+        Row: {
+          amount: number
+          backer_id: string
+          created_at: string | null
+          id: string
+          sprint_id: string
+          status: Database["public"]["Enums"]["commitment_status"] | null
+          unlock_milestone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          backer_id: string
+          created_at?: string | null
+          id?: string
+          sprint_id: string
+          status?: Database["public"]["Enums"]["commitment_status"] | null
+          unlock_milestone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          backer_id?: string
+          created_at?: string | null
+          id?: string
+          sprint_id?: string
+          status?: Database["public"]["Enums"]["commitment_status"] | null
+          unlock_milestone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commitments_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ideas: {
+        Row: {
+          competitive_analysis: string | null
+          created_at: string | null
+          founder_id: string
+          id: string
+          industry: string[] | null
+          is_published: boolean | null
+          pitch: string
+          problem_statement: string | null
+          required_roles: string[] | null
+          sprint_duration: number | null
+          stage: Database["public"]["Enums"]["idea_stage"] | null
+          target_users: string | null
+          title: string
+          updated_at: string | null
+          validation_proof: string | null
+          weekly_commitment: number | null
+        }
+        Insert: {
+          competitive_analysis?: string | null
+          created_at?: string | null
+          founder_id: string
+          id?: string
+          industry?: string[] | null
+          is_published?: boolean | null
+          pitch: string
+          problem_statement?: string | null
+          required_roles?: string[] | null
+          sprint_duration?: number | null
+          stage?: Database["public"]["Enums"]["idea_stage"] | null
+          target_users?: string | null
+          title: string
+          updated_at?: string | null
+          validation_proof?: string | null
+          weekly_commitment?: number | null
+        }
+        Update: {
+          competitive_analysis?: string | null
+          created_at?: string | null
+          founder_id?: string
+          id?: string
+          industry?: string[] | null
+          is_published?: boolean | null
+          pitch?: string
+          problem_statement?: string | null
+          required_roles?: string[] | null
+          sprint_duration?: number | null
+          stage?: Database["public"]["Enums"]["idea_stage"] | null
+          target_users?: string | null
+          title?: string
+          updated_at?: string | null
+          validation_proof?: string | null
+          weekly_commitment?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          availability_hours: number | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          email: string
+          execution_score: number | null
+          full_name: string | null
+          github_url: string | null
+          id: string
+          is_verified: boolean | null
+          linkedin_url: string | null
+          location: string | null
+          portfolio_url: string | null
+          skills: string[] | null
+          sprints_completed: number | null
+          tasks_completed: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          availability_hours?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          email: string
+          execution_score?: number | null
+          full_name?: string | null
+          github_url?: string | null
+          id: string
+          is_verified?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          portfolio_url?: string | null
+          skills?: string[] | null
+          sprints_completed?: number | null
+          tasks_completed?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          availability_hours?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string
+          execution_score?: number | null
+          full_name?: string | null
+          github_url?: string | null
+          id?: string
+          is_verified?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          portfolio_url?: string | null
+          skills?: string[] | null
+          sprints_completed?: number | null
+          tasks_completed?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sprint_applications: {
+        Row: {
+          availability_hours: number | null
+          created_at: string | null
+          id: string
+          message: string | null
+          role: string
+          sprint_id: string
+          status: Database["public"]["Enums"]["application_status"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          availability_hours?: number | null
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          role: string
+          sprint_id: string
+          status?: Database["public"]["Enums"]["application_status"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          availability_hours?: number | null
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          role?: string
+          sprint_id?: string
+          status?: Database["public"]["Enums"]["application_status"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_applications_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sprint_members: {
+        Row: {
+          equity_share: number | null
+          hours_committed: number | null
+          hours_logged: number | null
+          id: string
+          joined_at: string | null
+          left_at: string | null
+          role: string
+          sprint_id: string
+          user_id: string
+        }
+        Insert: {
+          equity_share?: number | null
+          hours_committed?: number | null
+          hours_logged?: number | null
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          role: string
+          sprint_id: string
+          user_id: string
+        }
+        Update: {
+          equity_share?: number | null
+          hours_committed?: number | null
+          hours_logged?: number | null
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          sprint_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_members_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sprints: {
+        Row: {
+          created_at: string | null
+          deliverables: string[] | null
+          deliverables_submitted: boolean | null
+          duration_days: number
+          end_date: string | null
+          goal: string | null
+          goals_defined: boolean | null
+          id: string
+          idea_id: string
+          last_activity_at: string | null
+          mid_review_done: boolean | null
+          name: string
+          progress: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["sprint_status"] | null
+          tasks_assigned: boolean | null
+          team_formed: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deliverables?: string[] | null
+          deliverables_submitted?: boolean | null
+          duration_days: number
+          end_date?: string | null
+          goal?: string | null
+          goals_defined?: boolean | null
+          id?: string
+          idea_id: string
+          last_activity_at?: string | null
+          mid_review_done?: boolean | null
+          name: string
+          progress?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["sprint_status"] | null
+          tasks_assigned?: boolean | null
+          team_formed?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deliverables?: string[] | null
+          deliverables_submitted?: boolean | null
+          duration_days?: number
+          end_date?: string | null
+          goal?: string | null
+          goals_defined?: boolean | null
+          id?: string
+          idea_id?: string
+          last_activity_at?: string | null
+          mid_review_done?: boolean | null
+          name?: string
+          progress?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["sprint_status"] | null
+          tasks_assigned?: boolean | null
+          team_formed?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprints_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          hours_estimated: number | null
+          hours_logged: number | null
+          id: string
+          priority: number | null
+          sprint_id: string
+          status: Database["public"]["Enums"]["task_status"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          hours_estimated?: number | null
+          hours_logged?: number | null
+          id?: string
+          priority?: number | null
+          sprint_id: string
+          status?: Database["public"]["Enums"]["task_status"] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          hours_estimated?: number | null
+          hours_logged?: number | null
+          id?: string
+          priority?: number | null
+          sprint_id?: string
+          status?: Database["public"]["Enums"]["task_status"] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "founder" | "builder" | "backer"
+      application_status: "pending" | "accepted" | "rejected" | "withdrawn"
+      commitment_status: "pending" | "locked" | "released" | "refunded"
+      idea_stage: "idea" | "validation" | "prototype" | "mvp"
+      sprint_status: "draft" | "active" | "paused" | "completed" | "failed"
+      task_status: "todo" | "in_progress" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +558,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["founder", "builder", "backer"],
+      application_status: ["pending", "accepted", "rejected", "withdrawn"],
+      commitment_status: ["pending", "locked", "released", "refunded"],
+      idea_stage: ["idea", "validation", "prototype", "mvp"],
+      sprint_status: ["draft", "active", "paused", "completed", "failed"],
+      task_status: ["todo", "in_progress", "done"],
+    },
   },
 } as const
