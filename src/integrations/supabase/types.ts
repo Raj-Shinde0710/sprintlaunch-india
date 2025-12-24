@@ -55,62 +55,153 @@ export type Database = {
           },
         ]
       }
+      demo_requests: {
+        Row: {
+          backer_id: string
+          created_at: string | null
+          id: string
+          message: string | null
+          request_type: string
+          sprint_id: string
+          status: string | null
+        }
+        Insert: {
+          backer_id: string
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          request_type: string
+          sprint_id: string
+          status?: string | null
+        }
+        Update: {
+          backer_id?: string
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          request_type?: string
+          sprint_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_requests_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ideas: {
         Row: {
           competitive_analysis: string | null
+          competitive_analysis_summary: string | null
           created_at: string | null
           founder_id: string
+          has_problem_validation: boolean | null
+          has_user_interviews: boolean | null
           id: string
           industry: string[] | null
           is_published: boolean | null
           pitch: string
           problem_statement: string | null
+          readiness_status: string | null
           required_roles: string[] | null
           sprint_duration: number | null
           stage: Database["public"]["Enums"]["idea_stage"] | null
           target_users: string | null
           title: string
           updated_at: string | null
+          validation_evidence: Json | null
           validation_proof: string | null
           weekly_commitment: number | null
         }
         Insert: {
           competitive_analysis?: string | null
+          competitive_analysis_summary?: string | null
           created_at?: string | null
           founder_id: string
+          has_problem_validation?: boolean | null
+          has_user_interviews?: boolean | null
           id?: string
           industry?: string[] | null
           is_published?: boolean | null
           pitch: string
           problem_statement?: string | null
+          readiness_status?: string | null
           required_roles?: string[] | null
           sprint_duration?: number | null
           stage?: Database["public"]["Enums"]["idea_stage"] | null
           target_users?: string | null
           title: string
           updated_at?: string | null
+          validation_evidence?: Json | null
           validation_proof?: string | null
           weekly_commitment?: number | null
         }
         Update: {
           competitive_analysis?: string | null
+          competitive_analysis_summary?: string | null
           created_at?: string | null
           founder_id?: string
+          has_problem_validation?: boolean | null
+          has_user_interviews?: boolean | null
           id?: string
           industry?: string[] | null
           is_published?: boolean | null
           pitch?: string
           problem_statement?: string | null
+          readiness_status?: string | null
           required_roles?: string[] | null
           sprint_duration?: number | null
           stage?: Database["public"]["Enums"]["idea_stage"] | null
           target_users?: string | null
           title?: string
           updated_at?: string | null
+          validation_evidence?: Json | null
           validation_proof?: string | null
           weekly_commitment?: number | null
         }
         Relationships: []
+      }
+      peer_reviews: {
+        Row: {
+          created_at: string | null
+          feedback: string | null
+          id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          sprint_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          feedback?: string | null
+          id?: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          sprint_id: string
+        }
+        Update: {
+          created_at?: string | null
+          feedback?: string | null
+          id?: string
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+          sprint_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_reviews_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -218,34 +309,52 @@ export type Database = {
       }
       sprint_members: {
         Row: {
+          commitment_deposit: number | null
+          dropout_penalty_applied: boolean | null
           equity_share: number | null
           hours_committed: number | null
           hours_logged: number | null
           id: string
+          is_founder: boolean | null
           joined_at: string | null
           left_at: string | null
+          min_weekly_hours: number | null
+          peer_rating: number | null
+          peer_reviews_received: number | null
           role: string
           sprint_id: string
           user_id: string
         }
         Insert: {
+          commitment_deposit?: number | null
+          dropout_penalty_applied?: boolean | null
           equity_share?: number | null
           hours_committed?: number | null
           hours_logged?: number | null
           id?: string
+          is_founder?: boolean | null
           joined_at?: string | null
           left_at?: string | null
+          min_weekly_hours?: number | null
+          peer_rating?: number | null
+          peer_reviews_received?: number | null
           role: string
           sprint_id: string
           user_id: string
         }
         Update: {
+          commitment_deposit?: number | null
+          dropout_penalty_applied?: boolean | null
           equity_share?: number | null
           hours_committed?: number | null
           hours_logged?: number | null
           id?: string
+          is_founder?: boolean | null
           joined_at?: string | null
           left_at?: string | null
+          min_weekly_hours?: number | null
+          peer_rating?: number | null
+          peer_reviews_received?: number | null
           role?: string
           sprint_id?: string
           user_id?: string
@@ -260,20 +369,62 @@ export type Database = {
           },
         ]
       }
+      sprint_timeline: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          sprint_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          sprint_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          sprint_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_timeline_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprints: {
         Row: {
+          completed_at: string | null
           created_at: string | null
           deliverables: string[] | null
           deliverables_submitted: boolean | null
+          demo_notes: string | null
+          demo_video_url: string | null
+          demo_visibility: string | null
           duration_days: number
           end_date: string | null
+          failed_at: string | null
           goal: string | null
           goals_defined: boolean | null
           id: string
           idea_id: string
+          inactivity_warning_at: string | null
           last_activity_at: string | null
           mid_review_done: boolean | null
           name: string
+          pitch_deck_url: string | null
           progress: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["sprint_status"] | null
@@ -282,18 +433,25 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string | null
           deliverables?: string[] | null
           deliverables_submitted?: boolean | null
+          demo_notes?: string | null
+          demo_video_url?: string | null
+          demo_visibility?: string | null
           duration_days: number
           end_date?: string | null
+          failed_at?: string | null
           goal?: string | null
           goals_defined?: boolean | null
           id?: string
           idea_id: string
+          inactivity_warning_at?: string | null
           last_activity_at?: string | null
           mid_review_done?: boolean | null
           name: string
+          pitch_deck_url?: string | null
           progress?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["sprint_status"] | null
@@ -302,18 +460,25 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string | null
           deliverables?: string[] | null
           deliverables_submitted?: boolean | null
+          demo_notes?: string | null
+          demo_video_url?: string | null
+          demo_visibility?: string | null
           duration_days?: number
           end_date?: string | null
+          failed_at?: string | null
           goal?: string | null
           goals_defined?: boolean | null
           id?: string
           idea_id?: string
+          inactivity_warning_at?: string | null
           last_activity_at?: string | null
           mid_review_done?: boolean | null
           name?: string
+          pitch_deck_url?: string | null
           progress?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["sprint_status"] | null
@@ -413,6 +578,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_equity_distribution: {
+        Args: { sprint_uuid: string }
+        Returns: {
+          equity_share: number
+          user_id: string
+        }[]
+      }
+      calculate_execution_score: {
+        Args: { user_uuid: string }
+        Returns: number
+      }
+      calculate_sprint_progress: {
+        Args: { sprint_uuid: string }
+        Returns: number
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

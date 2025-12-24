@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Discover from "./pages/Discover";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import IdeaForm from "./pages/IdeaForm";
+import SprintWorkspace from "./pages/SprintWorkspace";
 import EquityCalculator from "./pages/EquityCalculator";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import SuccessStories from "./pages/SuccessStories";
@@ -29,6 +31,9 @@ const App = () => (
             <Route path="/login" element={<Auth />} />
             <Route path="/signup" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/ideas/new" element={<IdeaForm />} />
+            <Route path="/idea/:id/edit" element={<IdeaForm />} />
+            <Route path="/sprint/:id" element={<SprintWorkspace />} />
             <Route path="/equity-calculator" element={<EquityCalculator />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/success-stories" element={<SuccessStories />} />
