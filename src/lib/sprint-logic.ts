@@ -232,12 +232,12 @@ export async function logSprintEvent(
   eventData: Record<string, unknown> = {},
   userId?: string
 ): Promise<void> {
-  await supabase.from("sprint_timeline").insert({
+  await supabase.from("sprint_timeline").insert([{
     sprint_id: sprintId,
     user_id: userId || null,
     event_type: eventType,
-    event_data: eventData,
-  });
+    event_data: eventData as unknown as Record<string, never>,
+  }]);
 }
 
 // Activate sprint
