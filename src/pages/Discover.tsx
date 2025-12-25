@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, 
   Filter, 
@@ -19,83 +21,29 @@ import {
   Star,
   ArrowRight,
   Github,
-  Linkedin
+  Linkedin,
+  Loader2
 } from "lucide-react";
 
 type TabType = "ideas" | "builders" | "backers";
 
-const ideas = [
-  {
-    id: "1",
-    title: "AI-Powered Legal Document Analyzer",
-    founder: "Priya Sharma",
-    location: "Bengaluru",
-    verified: true,
-    stage: "Prototype",
-    industry: ["LegalTech", "AI/ML"],
-    sprintGoal: "Build MVP with contract parsing & risk detection",
-    sprintDays: 21,
-    rolesNeeded: ["Full-Stack Dev", "ML Engineer"],
-    commitment: "20 hrs/week",
-    applicants: 12,
-  },
-  {
-    id: "2",
-    title: "Hyperlocal Grocery Delivery for Tier-2 Cities",
-    founder: "Rahul Verma",
-    location: "Jaipur",
-    verified: true,
-    stage: "Validation",
-    industry: ["E-Commerce", "Logistics"],
-    sprintGoal: "Launch pilot in 3 localities with 50 daily orders",
-    sprintDays: 30,
-    rolesNeeded: ["React Native Dev", "Growth Lead"],
-    commitment: "25 hrs/week",
-    applicants: 8,
-  },
-  {
-    id: "3",
-    title: "B2B SaaS for GST Compliance Automation",
-    founder: "Ananya Patel",
-    location: "Mumbai",
-    verified: false,
-    stage: "Idea",
-    industry: ["FinTech", "SaaS"],
-    sprintGoal: "Validate with 10 pilot SMBs and build core automation",
-    sprintDays: 14,
-    rolesNeeded: ["Backend Dev", "Product Designer"],
-    commitment: "15 hrs/week",
-    applicants: 5,
-  },
-  {
-    id: "4",
-    title: "Mental Health App for Working Professionals",
-    founder: "Vikram Singh",
-    location: "Delhi NCR",
-    verified: true,
-    stage: "Prototype",
-    industry: ["HealthTech", "Wellness"],
-    sprintGoal: "Launch beta with 100 users and therapist matching",
-    sprintDays: 21,
-    rolesNeeded: ["Mobile Dev", "UX Designer"],
-    commitment: "20 hrs/week",
-    applicants: 15,
-  },
-  {
-    id: "5",
-    title: "Creator Economy Platform for Indian YouTubers",
-    founder: "Sneha Iyer",
-    location: "Chennai",
-    verified: true,
-    stage: "Validation",
-    industry: ["Creator Economy", "SaaS"],
-    sprintGoal: "Onboard 50 creators, integrate brand matching",
-    sprintDays: 30,
-    rolesNeeded: ["Full-Stack Dev", "Growth Hacker"],
-    commitment: "25 hrs/week",
-    applicants: 20,
-  },
-];
+interface IdeaWithFounder {
+  id: string;
+  title: string;
+  pitch: string;
+  stage: string | null;
+  industry: string[] | null;
+  required_roles: string[] | null;
+  sprint_duration: number | null;
+  weekly_commitment: number | null;
+  founder_id: string;
+  founder?: {
+    full_name: string | null;
+    location: string | null;
+    is_verified: boolean | null;
+  };
+  applicant_count?: number;
+}
 
 const builders = [
   {
@@ -162,7 +110,7 @@ const backers = [
     investmentRange: "₹5L - ₹25L",
     sectors: ["FinTech", "SaaS", "AI/ML"],
     involvement: "Advisory",
-    teamsBacke: 8,
+    teamsBacked: 8,
     successRate: "75%",
   },
   {
@@ -194,9 +142,83 @@ const backers = [
 export default function Discover() {
   const [activeTab, setActiveTab] = useState<TabType>("ideas");
   const [searchQuery, setSearchQuery] = useState("");
+  const [ideas, setIdeas] = useState<IdeaWithFounder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchIdeas();
+  }, []);
+
+  const fetchIdeas = async () => {
+    setLoading(true);
+    
+    // Fetch published ideas
+    const { data: ideasData, error } = await supabase
+      .from("ideas")
+      .select("*")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching ideas:", error);
+      setLoading(false);
+      return;
+    }
+
+    if (!ideasData || ideasData.length === 0) {
+      setIdeas([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch founder profiles
+    const founderIds = [...new Set(ideasData.map((i) => i.founder_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, location, is_verified")
+      .in("id", founderIds);
+
+    const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+
+    // Fetch application counts for each idea's sprint
+    const ideaIds = ideasData.map((i) => i.id);
+    const { data: sprints } = await supabase
+      .from("sprints")
+      .select("id, idea_id")
+      .in("idea_id", ideaIds);
+
+    const sprintIds = sprints?.map((s) => s.id) || [];
+    const { data: applications } = await supabase
+      .from("sprint_applications")
+      .select("sprint_id")
+      .in("sprint_id", sprintIds);
+
+    // Count applications per idea
+    const applicationCounts = new Map<string, number>();
+    sprints?.forEach((sprint) => {
+      const count = applications?.filter((a) => a.sprint_id === sprint.id).length || 0;
+      applicationCounts.set(sprint.idea_id, (applicationCounts.get(sprint.idea_id) || 0) + count);
+    });
+
+    // Merge data
+    const ideasWithFounders = ideasData.map((idea) => ({
+      ...idea,
+      founder: profileMap.get(idea.founder_id),
+      applicant_count: applicationCounts.get(idea.id) || 0,
+    }));
+
+    setIdeas(ideasWithFounders);
+    setLoading(false);
+  };
+
+  const filteredIdeas = ideas.filter((idea) =>
+    idea.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    idea.pitch.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    idea.industry?.some((i) => i.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const tabs = [
-    { id: "ideas" as TabType, label: "Ideas", icon: Lightbulb, count: ideas.length },
+    { id: "ideas" as TabType, label: "Ideas", icon: Lightbulb, count: filteredIdeas.length },
     { id: "builders" as TabType, label: "Builders", icon: Code2, count: builders.length },
     { id: "backers" as TabType, label: "Backers", icon: Wallet, count: backers.length },
   ];
@@ -278,83 +300,113 @@ export default function Discover() {
         <div className="container mx-auto px-4">
           {/* Ideas Tab */}
           {activeTab === "ideas" && (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ideas.map((idea, index) => (
-                <motion.div
-                  key={idea.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="glass-card p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-border/50 hover:border-founder/30 cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-xl bg-founder/10 flex items-center justify-center text-founder font-bold">
-                        {idea.founder.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-medium text-foreground">{idea.founder}</span>
-                          {idea.verified && <Verified className="w-3.5 h-3.5 text-builder" />}
+            <>
+              {loading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-8 h-8 animate-spin text-founder" />
+                </div>
+              ) : filteredIdeas.length === 0 ? (
+                <div className="text-center py-16">
+                  <Lightbulb className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No ideas found</h3>
+                  <p className="text-muted-foreground">
+                    {searchQuery ? "Try a different search term" : "Be the first to publish an idea!"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredIdeas.map((idea, index) => (
+                    <Link key={idea.id} to={`/idea/${idea.id}`}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="glass-card p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-border/50 hover:border-founder/30 cursor-pointer h-full"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-founder/10 flex items-center justify-center text-founder font-bold">
+                              {idea.founder?.full_name?.charAt(0) || "F"}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm font-medium text-foreground">
+                                  {idea.founder?.full_name || "Founder"}
+                                </span>
+                                {idea.founder?.is_verified && <Verified className="w-3.5 h-3.5 text-builder" />}
+                              </div>
+                              {idea.founder?.location && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3" />
+                                  {idea.founder.location}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {idea.stage || "Idea"}
+                          </Badge>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
-                          {idea.location}
+
+                        <h3 className="font-display text-lg font-bold text-foreground mb-2 hover:text-founder transition-colors line-clamp-2">
+                          {idea.title}
+                        </h3>
+
+                        {idea.industry && idea.industry.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {idea.industry.map((tag) => (
+                              <span key={tag} className="px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="p-3 rounded-lg bg-muted/50 mb-4">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                            <Zap className="w-3 h-3 text-founder" />
+                            Pitch
+                          </div>
+                          <p className="text-sm text-foreground line-clamp-2">{idea.pitch}</p>
                         </div>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {idea.stage}
-                    </Badge>
-                  </div>
 
-                  <h3 className="font-display text-lg font-bold text-foreground mb-2 hover:text-founder transition-colors line-clamp-2">
-                    {idea.title}
-                  </h3>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {idea.sprint_duration || 14} days
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {idea.applicant_count} applied
+                            </span>
+                          </div>
+                          <span className="text-founder font-medium">{idea.weekly_commitment || 10} hrs/wk</span>
+                        </div>
 
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {idea.industry.map((tag) => (
-                      <span key={tag} className="px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-muted/50 mb-4">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <Zap className="w-3 h-3 text-founder" />
-                      Sprint Goal
-                    </div>
-                    <p className="text-sm text-foreground line-clamp-2">{idea.sprintGoal}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {idea.sprintDays} days
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        {idea.applicants} applied
-                      </span>
-                    </div>
-                    <span className="text-founder font-medium">{idea.commitment}</span>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <div className="text-xs text-muted-foreground mb-2">Looking for:</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {idea.rolesNeeded.map((role) => (
-                        <span key={role} className="px-2 py-1 rounded-md bg-builder/10 text-builder text-xs font-medium">
-                          {role}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                        {idea.required_roles && idea.required_roles.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <div className="text-xs text-muted-foreground mb-2">Looking for:</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {idea.required_roles.slice(0, 3).map((role) => (
+                                <span key={role} className="px-2 py-1 rounded-md bg-builder/10 text-builder text-xs font-medium">
+                                  {role}
+                                </span>
+                              ))}
+                              {idea.required_roles.length > 3 && (
+                                <span className="px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs">
+                                  +{idea.required_roles.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {/* Builders Tab */}
@@ -464,40 +516,44 @@ export default function Discover() {
                         </div>
                       </div>
                     </div>
-                    <Badge className="bg-backer/10 text-backer border-0">
+                    <Badge variant="outline" className="text-xs border-backer text-backer">
                       {backer.type}
                     </Badge>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-backer/5 mb-4">
-                    <div className="text-xs text-muted-foreground mb-1">Investment Range</div>
-                    <div className="font-display font-bold text-backer">{backer.investmentRange}</div>
-                  </div>
-
                   <div className="mb-4">
-                    <div className="text-xs text-muted-foreground mb-2">Preferred Sectors</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {backer.sectors.map((sector) => (
-                        <span key={sector} className="px-2 py-1 rounded-md bg-muted text-xs text-foreground">
-                          {sector}
-                        </span>
-                      ))}
+                    <div className="text-sm text-muted-foreground mb-1">Investment Range</div>
+                    <div className="font-display text-lg font-bold text-backer">
+                      {backer.investmentRange}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Involvement</span>
-                    <span className="font-medium text-foreground">{backer.involvement}</span>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {backer.sectors.map((sector) => (
+                      <span key={sector} className="px-2 py-1 rounded-md bg-backer/10 text-backer text-xs font-medium">
+                        {sector}
+                      </span>
+                    ))}
                   </div>
 
-                  <div className="flex items-center justify-between text-sm mb-4">
-                    <span className="text-muted-foreground">Success Rate</span>
-                    <span className="font-medium text-builder">{backer.successRate}</span>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Involvement</span>
+                      <span className="font-medium text-foreground">{backer.involvement}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Teams Backed</span>
+                      <span className="font-medium text-backer">{backer.teamsBacked}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Success Rate</span>
+                      <span className="font-medium text-foreground">{backer.successRate}</span>
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t border-border">
                     <Button variant="backerOutline" size="sm" className="w-full">
-                      Request Introduction
+                      Connect
                       <ArrowRight className="w-3 h-3" />
                     </Button>
                   </div>

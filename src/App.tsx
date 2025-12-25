@@ -9,6 +9,7 @@ import Discover from "./pages/Discover";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import IdeaForm from "./pages/IdeaForm";
+import IdeaDetail from "./pages/IdeaDetail";
 import SprintWorkspace from "./pages/SprintWorkspace";
 import EquityCalculator from "./pages/EquityCalculator";
 import HowItWorksPage from "./pages/HowItWorksPage";
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/signup" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/ideas/new" element={<IdeaForm />} />
+            <Route path="/idea/:id" element={<IdeaDetail />} />
             <Route path="/idea/:id/edit" element={<IdeaForm />} />
             <Route path="/sprint/:id" element={<SprintWorkspace />} />
             <Route path="/equity-calculator" element={<EquityCalculator />} />
