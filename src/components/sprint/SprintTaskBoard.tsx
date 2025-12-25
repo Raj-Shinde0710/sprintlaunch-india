@@ -142,7 +142,7 @@ export function SprintTaskBoard({
       return;
     }
 
-    setTasks(tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
+    setTasks(tasks.map((t) => (t.id === taskId ? { ...t, status: newStatus, ...(newStatus === "done" ? { completed_at: new Date().toISOString() } : {}) } : t)));
 
     // Update sprint progress
     await calculateSprintProgress(sprintId);
