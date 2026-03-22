@@ -11,6 +11,8 @@ import Dashboard from "./pages/Dashboard";
 import IdeaForm from "./pages/IdeaForm";
 import IdeaDetail from "./pages/IdeaDetail";
 import SprintWorkspace from "./pages/SprintWorkspace";
+import BuilderWorkspace from "./pages/BuilderWorkspace";
+import BackerInvestmentDashboard from "./pages/BackerInvestmentDashboard";
 import EquityCalculator from "./pages/EquityCalculator";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import SuccessStories from "./pages/SuccessStories";

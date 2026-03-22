@@ -386,6 +386,9 @@ export default function IdeaDetail() {
                   </div>
                 </motion.div>
               )}
+
+              {/* Team & Backers Section */}
+              <IdeaTeamSection ideaId={idea.id} sprintId={sprint?.id} />
             </div>
 
             {/* Sidebar */}
