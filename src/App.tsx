@@ -11,6 +11,8 @@ import Dashboard from "./pages/Dashboard";
 import IdeaForm from "./pages/IdeaForm";
 import IdeaDetail from "./pages/IdeaDetail";
 import SprintWorkspace from "./pages/SprintWorkspace";
+import BuilderWorkspace from "./pages/BuilderWorkspace";
+import BackerInvestmentDashboard from "./pages/BackerInvestmentDashboard";
 import EquityCalculator from "./pages/EquityCalculator";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import SuccessStories from "./pages/SuccessStories";
@@ -36,6 +38,8 @@ const App = () => (
             <Route path="/idea/:id" element={<IdeaDetail />} />
             <Route path="/idea/:id/edit" element={<IdeaForm />} />
             <Route path="/sprint/:id" element={<SprintWorkspace />} />
+            <Route path="/builder-workspace/:id" element={<BuilderWorkspace />} />
+            <Route path="/backer-dashboard/:id" element={<BackerInvestmentDashboard />} />
             <Route path="/equity-calculator" element={<EquityCalculator />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/success-stories" element={<SuccessStories />} />
