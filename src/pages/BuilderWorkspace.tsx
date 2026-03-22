@@ -138,7 +138,7 @@ export default function BuilderWorkspace() {
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     const { error } = await supabase
       .from("tasks")
-      .update({ status: newStatus, completed_at: newStatus === "done" ? new Date().toISOString() : null })
+      .update({ status: newStatus as "todo" | "in_progress" | "done", completed_at: newStatus === "done" ? new Date().toISOString() : null })
       .eq("id", taskId);
 
     if (!error) {
