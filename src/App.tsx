@@ -38,6 +38,8 @@ const App = () => (
             <Route path="/idea/:id" element={<IdeaDetail />} />
             <Route path="/idea/:id/edit" element={<IdeaForm />} />
             <Route path="/sprint/:id" element={<SprintWorkspace />} />
+            <Route path="/builder-workspace/:id" element={<BuilderWorkspace />} />
+            <Route path="/backer-dashboard/:id" element={<BackerInvestmentDashboard />} />
             <Route path="/equity-calculator" element={<EquityCalculator />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/success-stories" element={<SuccessStories />} />
