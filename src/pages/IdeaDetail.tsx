@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { IdeaTeamSection } from "@/components/idea/IdeaTeamSection";
 import { 
   MapPin, 
   Clock, 
