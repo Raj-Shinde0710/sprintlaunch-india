@@ -164,13 +164,16 @@ export default function IdeaDetail() {
     toast({ title: "Commit Funds", description: "Investment feature coming soon!" });
   };
 
+  const canJoinSprint = sprint && ["draft", "active"].includes(sprint.status || "");
+
   const renderBuilderCTA = () => {
     if (!sprint) return (
       <Button className="w-full" variant="builder" disabled>
-        <Clock className="w-4 h-4 mr-2" /> No Active Sprint
+        <Clock className="w-4 h-4 mr-2" /> Sprint Not Available
       </Button>
     );
 
+    // Check application status first
     switch (applicationStatus) {
       case "pending":
         return (
@@ -193,6 +196,14 @@ export default function IdeaDetail() {
           </Button>
         );
       default:
+        // Check if sprint allows joining
+        if (!canJoinSprint) {
+          return (
+            <Button className="w-full" variant="outline" disabled>
+              <Lock className="w-4 h-4 mr-2" /> Sprint {sprint.status} — Joining Closed
+            </Button>
+          );
+        }
         return (
           <Button className="w-full" variant="builder" onClick={() => setShowApplicationForm(true)}>
             <UserPlus className="w-4 h-4 mr-2" /> Apply to Join Sprint
