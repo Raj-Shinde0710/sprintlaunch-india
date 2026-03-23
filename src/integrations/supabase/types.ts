@@ -265,10 +265,13 @@ export type Database = {
       }
       sprint_applications: {
         Row: {
+          answers: Json | null
           availability_hours: number | null
           created_at: string | null
           id: string
           message: string | null
+          portfolio_links: string[] | null
+          resume_url: string | null
           role: string
           sprint_id: string
           status: Database["public"]["Enums"]["application_status"] | null
@@ -276,10 +279,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          answers?: Json | null
           availability_hours?: number | null
           created_at?: string | null
           id?: string
           message?: string | null
+          portfolio_links?: string[] | null
+          resume_url?: string | null
           role: string
           sprint_id: string
           status?: Database["public"]["Enums"]["application_status"] | null
@@ -287,10 +293,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          answers?: Json | null
           availability_hours?: number | null
           created_at?: string | null
           id?: string
           message?: string | null
+          portfolio_links?: string[] | null
+          resume_url?: string | null
           role?: string
           sprint_id?: string
           status?: Database["public"]["Enums"]["application_status"] | null
@@ -362,6 +371,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sprint_members_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sprint_questions: {
+        Row: {
+          created_at: string | null
+          id: string
+          question: string
+          sort_order: number | null
+          sprint_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          question: string
+          sort_order?: number | null
+          sprint_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          question?: string
+          sort_order?: number | null
+          sprint_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_questions_sprint_id_fkey"
             columns: ["sprint_id"]
             isOneToOne: false
             referencedRelation: "sprints"
