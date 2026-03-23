@@ -99,14 +99,39 @@ export default function IdeaDetail() {
       .maybeSingle();
     if (founderData) setFounder(founderData);
 
-    // Fetch active sprint
-    const { data: sprintData } = await supabase
+    // Fetch sprint (any status)
+    let { data: sprintData } = await supabase
       .from("sprints")
       .select("id, name, status, progress, start_date, end_date")
       .eq("idea_id", id!)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // Auto-create a draft sprint if none exists and user is the founder
+    if (!sprintData && ideaData.founder_id === user?.id) {
+      const { data: newSprint } = await supabase
+        .from("sprints")
+        .insert({
+          idea_id: ideaData.id,
+          name: `${ideaData.title} Sprint`,
+          duration_days: ideaData.sprint_duration || 14,
+          status: "draft",
+        })
+        .select("id, name, status, progress, start_date, end_date")
+        .single();
+
+      if (newSprint) {
+        sprintData = newSprint;
+        // Add founder as sprint member
+        await supabase.from("sprint_members").insert({
+          user_id: user!.id,
+          sprint_id: newSprint.id,
+          role: "Founder",
+          is_founder: true,
+        });
+      }
+    }
 
     if (sprintData) {
       setSprint(sprintData);
@@ -117,7 +142,6 @@ export default function IdeaDetail() {
         .eq("sprint_id", sprintData.id);
       setApplicationCount(count || 0);
 
-      // Check current user's application status
       if (user) {
         const { data: myApp } = await supabase
           .from("sprint_applications")
