@@ -129,6 +129,40 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
       return;
     }
 
+    // Auto-activate sprint if minimum team formed (founder + 1 builder)
+    const { count: memberCount } = await supabase
+      .from("sprint_members")
+      .select("*", { count: "exact", head: true })
+      .eq("sprint_id", sprintId)
+      .is("left_at", null);
+
+    if (memberCount && memberCount >= 2) {
+      const { data: currentSprint } = await supabase
+        .from("sprints")
+        .select("status")
+        .eq("id", sprintId)
+        .single();
+
+      if (currentSprint?.status === "draft") {
+        const now = new Date();
+        const { data: sprintInfo } = await supabase
+          .from("sprints")
+          .select("duration_days")
+          .eq("id", sprintId)
+          .single();
+
+        const durationDays = sprintInfo?.duration_days || 14;
+        const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+        await supabase.from("sprints").update({
+          status: "active",
+          start_date: now.toISOString(),
+          end_date: endDate.toISOString(),
+          team_formed: true,
+        }).eq("id", sprintId);
+      }
+    }
+
     toast({ title: "Application accepted! ✅", description: `${app.profile?.full_name || "Builder"} has been added to the sprint` });
     setProcessing(null);
     fetchData();

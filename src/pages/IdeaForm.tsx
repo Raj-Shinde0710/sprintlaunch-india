@@ -174,6 +174,32 @@ export default function IdeaForm() {
       return;
     }
 
+    // Auto-create a sprint if new idea
+    if (!isEditing) {
+      await supabase.from("sprints").insert({
+        idea_id: result.data.id,
+        name: `${formData.title} Sprint`,
+        duration_days: formData.sprint_duration || 14,
+        status: "draft",
+      });
+
+      // Add founder as sprint member
+      const { data: sprintRow } = await supabase
+        .from("sprints")
+        .select("id")
+        .eq("idea_id", result.data.id)
+        .single();
+
+      if (sprintRow) {
+        await supabase.from("sprint_members").insert({
+          user_id: user.id,
+          sprint_id: sprintRow.id,
+          role: "Founder",
+          is_founder: true,
+        });
+      }
+    }
+
     toast({
       title: publish ? "Idea published!" : "Idea saved",
       description: publish

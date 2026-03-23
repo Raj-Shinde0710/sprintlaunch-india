@@ -142,7 +142,7 @@ export function FounderDashboard() {
   };
 
   const activeSprints = ideas.flatMap((idea) =>
-    idea.sprints.filter((s) => s.status === "active")
+    idea.sprints.filter((s) => s.status === "active" || s.status === "draft")
   );
 
   const getDaysRemaining = (endDate: string | null) => {
