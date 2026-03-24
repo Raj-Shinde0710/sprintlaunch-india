@@ -38,6 +38,8 @@ import {
   Play,
   Pause,
   Flag,
+  Brain,
+  ShieldCheck,
   TrendingUp,
   Calendar,
   Activity,
