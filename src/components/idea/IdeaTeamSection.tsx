@@ -63,12 +63,28 @@ export function IdeaTeamSection({ ideaId, sprintId }: IdeaTeamSectionProps) {
   const fetchForSprint = async (sid: string) => {
     const { data: membersData } = await supabase
       .from("sprint_members")
-      .select("id, role, is_founder, hours_logged, profile:profiles!sprint_members_user_id_fkey(full_name, execution_score, is_verified)")
+      .select("id, user_id, role, is_founder, hours_logged")
       .eq("sprint_id", sid)
       .is("left_at", null);
 
-    if (membersData) {
-      setMembers(membersData as unknown as Member[]);
+    if (membersData && membersData.length > 0) {
+      const userIds = membersData.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, execution_score, is_verified")
+        .in("id", userIds);
+
+      const enriched: Member[] = membersData.map((m) => {
+        const p = profiles?.find((pr) => pr.id === m.user_id) || null;
+        return {
+          id: m.id,
+          role: m.role,
+          is_founder: m.is_founder || false,
+          hours_logged: m.hours_logged || 0,
+          profile: p ? { full_name: p.full_name, execution_score: p.execution_score, is_verified: p.is_verified } : null,
+        };
+      });
+      setMembers(enriched);
     }
 
     // Fetch backers for this sprint - only get backer profiles
