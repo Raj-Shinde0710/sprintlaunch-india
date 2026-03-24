@@ -269,21 +269,6 @@ export default function SprintWorkspace() {
     }
   };
 
-  const getHealthBadgeColor = (status: string) => {
-    switch (status) {
-      case "healthy":
-        return "bg-green-500/10 text-green-600 border-green-500/30";
-      case "warning":
-        return "bg-yellow-500/10 text-yellow-600 border-yellow-500/30";
-      case "critical":
-        return "bg-red-500/10 text-red-600 border-red-500/30";
-      case "failed":
-        return "bg-red-500/20 text-red-700 border-red-500/50";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
   return (
     <main className="min-h-screen bg-background">
       <Navbar />
