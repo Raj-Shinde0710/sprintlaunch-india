@@ -70,6 +70,9 @@ interface Sprint {
     id: string;
     title: string;
     founder_id: string;
+    pitch: string;
+    industry: string[] | null;
+    sprint_duration: number | null;
   };
 }
 
