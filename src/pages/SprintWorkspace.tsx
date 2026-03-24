@@ -25,6 +25,8 @@ import { SprintTaskBoard } from "@/components/sprint/SprintTaskBoard";
 import { SprintTimeline } from "@/components/sprint/SprintTimeline";
 import { SprintDemoDay } from "@/components/sprint/SprintDemoDay";
 import { EquityChart } from "@/components/sprint/EquityChart";
+import { AISprintPlanner } from "@/components/sprint/AISprintPlanner";
+import { RiskIndicator } from "@/components/sprint/RiskIndicator";
 import {
   Rocket,
   ArrowLeft,
