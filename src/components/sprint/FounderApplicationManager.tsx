@@ -325,12 +325,12 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
                       {app.portfolio_links.map((link, i) => (
                         <a
                           key={i}
-                          href={link}
+                          href={link.startsWith("http") ? link : `https://${link}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-builder hover:underline flex items-center gap-1"
                         >
-                          <ExternalLink className="w-3 h-3" /> {new URL(link).hostname}
+                          <ExternalLink className="w-3 h-3" /> {(() => { try { return new URL(link.startsWith("http") ? link : `https://${link}`).hostname; } catch { return link; } })()}
                         </a>
                       ))}
                     </div>
