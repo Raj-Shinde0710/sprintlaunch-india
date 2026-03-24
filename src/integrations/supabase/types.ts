@@ -378,6 +378,41 @@ export type Database = {
           },
         ]
       }
+      sprint_plans: {
+        Row: {
+          created_at: string | null
+          generated_at: string | null
+          id: string
+          plan_data: Json
+          sprint_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          generated_at?: string | null
+          id?: string
+          plan_data?: Json
+          sprint_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          generated_at?: string | null
+          id?: string
+          plan_data?: Json
+          sprint_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_plans_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprint_questions: {
         Row: {
           created_at: string | null
@@ -542,6 +577,7 @@ export type Database = {
           assignee_id: string | null
           completed_at: string | null
           created_at: string | null
+          created_by: string | null
           description: string | null
           due_date: string | null
           hours_estimated: number | null
@@ -557,6 +593,7 @@ export type Database = {
           assignee_id?: string | null
           completed_at?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           hours_estimated?: number | null
@@ -572,6 +609,7 @@ export type Database = {
           assignee_id?: string | null
           completed_at?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           hours_estimated?: number | null
