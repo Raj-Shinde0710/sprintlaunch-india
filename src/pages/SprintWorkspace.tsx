@@ -125,7 +125,10 @@ export default function SprintWorkspace() {
         idea:ideas (
           id,
           title,
-          founder_id
+          founder_id,
+          pitch,
+          industry,
+          sprint_duration
         )
       `)
       .eq("id", id)
