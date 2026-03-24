@@ -25,6 +25,8 @@ import { SprintTaskBoard } from "@/components/sprint/SprintTaskBoard";
 import { SprintTimeline } from "@/components/sprint/SprintTimeline";
 import { SprintDemoDay } from "@/components/sprint/SprintDemoDay";
 import { EquityChart } from "@/components/sprint/EquityChart";
+import { AISprintPlanner } from "@/components/sprint/AISprintPlanner";
+import { RiskIndicator } from "@/components/sprint/RiskIndicator";
 import {
   Rocket,
   ArrowLeft,
@@ -36,6 +38,8 @@ import {
   Play,
   Pause,
   Flag,
+  Brain,
+  ShieldCheck,
   TrendingUp,
   Calendar,
   Activity,
@@ -66,6 +70,9 @@ interface Sprint {
     id: string;
     title: string;
     founder_id: string;
+    pitch: string;
+    industry: string[] | null;
+    sprint_duration: number | null;
   };
 }
 
@@ -118,7 +125,10 @@ export default function SprintWorkspace() {
         idea:ideas (
           id,
           title,
-          founder_id
+          founder_id,
+          pitch,
+          industry,
+          sprint_duration
         )
       `)
       .eq("id", id)
@@ -259,21 +269,6 @@ export default function SprintWorkspace() {
     }
   };
 
-  const getHealthBadgeColor = (status: string) => {
-    switch (status) {
-      case "healthy":
-        return "bg-green-500/10 text-green-600 border-green-500/30";
-      case "warning":
-        return "bg-yellow-500/10 text-yellow-600 border-yellow-500/30";
-      case "critical":
-        return "bg-red-500/10 text-red-600 border-red-500/30";
-      case "failed":
-        return "bg-red-500/20 text-red-700 border-red-500/50";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
   return (
     <main className="min-h-screen bg-background">
       <Navbar />
@@ -400,24 +395,29 @@ export default function SprintWorkspace() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Sprint Health</p>
+                <p className="text-sm text-muted-foreground">Sprint Risk</p>
               </div>
-              <Badge className={`${getHealthBadgeColor(health?.status || "")} text-sm px-3 py-1`}>
-                {health?.status === "healthy" && <CheckCircle2 className="w-4 h-4 mr-1" />}
-                {health?.status === "warning" && <AlertTriangle className="w-4 h-4 mr-1" />}
-                {health?.status === "critical" && <AlertTriangle className="w-4 h-4 mr-1" />}
-                {health?.status}
-              </Badge>
+              <RiskIndicator sprintId={sprint.id} compact />
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content */}
         <Tabs defaultValue="tasks" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">
               <Target className="w-4 h-4 mr-2" />
               Tasks
+            </TabsTrigger>
+            {isFounder && (
+              <TabsTrigger value="ai-planner">
+                <Brain className="w-4 h-4 mr-2" />
+                AI Planner
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="risk">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Risk
             </TabsTrigger>
             <TabsTrigger value="team">
               <Users className="w-4 h-4 mr-2" />
@@ -447,6 +447,22 @@ export default function SprintWorkspace() {
               sprintStatus={sprint.status}
               onProgressUpdate={fetchSprintData}
             />
+          </TabsContent>
+
+          {isFounder && (
+            <TabsContent value="ai-planner">
+              <AISprintPlanner
+                sprintId={sprint.id}
+                ideaDescription={sprint.idea.pitch || sprint.idea.title}
+                industry={sprint.idea.industry || []}
+                sprintDuration={sprint.duration_days}
+                onTasksCreated={fetchSprintData}
+              />
+            </TabsContent>
+          )}
+
+          <TabsContent value="risk">
+            <RiskIndicator sprintId={sprint.id} />
           </TabsContent>
 
           <TabsContent value="team">

@@ -11,16 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateSprintProgress, logSprintEvent } from "@/lib/sprint-logic";
 import {
   Plus,
-  GripVertical,
   Clock,
   User,
   CheckCircle2,
   Circle,
   Loader2,
   Trash2,
-  Edit2,
-  X,
   Save,
+  X,
+  AlertTriangle,
+  Calendar,
 } from "lucide-react";
 
 interface Task {
@@ -33,9 +33,16 @@ interface Task {
   hours_estimated: number | null;
   hours_logged: number;
   due_date: string | null;
+  created_by: string | null;
   assignee?: {
     full_name: string | null;
   };
+}
+
+interface Member {
+  user_id: string;
+  full_name: string | null;
+  role: string;
 }
 
 interface SprintTaskBoardProps {
@@ -47,10 +54,16 @@ interface SprintTaskBoardProps {
 }
 
 const columns = [
-  { id: "todo", title: "To Do", icon: Circle },
-  { id: "in_progress", title: "In Progress", icon: Loader2 },
-  { id: "done", title: "Done", icon: CheckCircle2 },
+  { id: "todo", title: "To Do", icon: Circle, color: "text-muted-foreground" },
+  { id: "in_progress", title: "In Progress", icon: Loader2, color: "text-yellow-600" },
+  { id: "done", title: "Done", icon: CheckCircle2, color: "text-green-600" },
 ];
+
+const priorityLabels: Record<number, { label: string; className: string }> = {
+  3: { label: "High", className: "bg-red-500/10 text-red-600 border-red-500/30" },
+  2: { label: "Medium", className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30" },
+  1: { label: "Low", className: "bg-green-500/10 text-green-600 border-green-500/30" },
+};
 
 export function SprintTaskBoard({
   sprintId,
@@ -62,47 +75,117 @@ export function SprintTaskBoard({
   const { user } = useAuth();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddTask, setShowAddTask] = useState(false);
-  const [editingTask, setEditingTask] = useState<string | null>(null);
-  const [newTask, setNewTask] = useState({ title: "", description: "", hours_estimated: "" });
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    hours_estimated: "",
+    priority: "2",
+    assignee_id: "",
+    due_date: "",
+  });
 
-  const canEdit = (isFounder || isMember) && sprintStatus === "active";
+  const canEdit = (isFounder || isMember) && ["active", "draft"].includes(sprintStatus);
+  const canManageTasks = isFounder;
 
   useEffect(() => {
     fetchTasks();
+    fetchMembers();
   }, [sprintId]);
 
   const fetchTasks = async () => {
-    const { data } = await supabase
+    // Fetch tasks separately, then enrich with profiles
+    const { data: tasksData } = await supabase
       .from("tasks")
-      .select(`
-        *,
-        assignee:profiles!tasks_assignee_id_fkey (
-          full_name
-        )
-      `)
+      .select("*")
       .eq("sprint_id", sprintId)
-      .order("priority", { ascending: true });
+      .order("priority", { ascending: false });
 
-    if (data) {
-      setTasks(data as unknown as Task[]);
+    if (tasksData) {
+      // Get unique assignee IDs
+      const assigneeIds = [...new Set(tasksData.filter(t => t.assignee_id).map(t => t.assignee_id!))];
+      
+      let profilesMap: Record<string, { full_name: string | null }> = {};
+      if (assigneeIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", assigneeIds);
+        
+        if (profiles) {
+          profilesMap = Object.fromEntries(profiles.map(p => [p.id, { full_name: p.full_name }]));
+        }
+      }
+
+      const enrichedTasks = tasksData.map(t => ({
+        ...t,
+        status: t.status as "todo" | "in_progress" | "done",
+        hours_logged: t.hours_logged || 0,
+        priority: t.priority || 2,
+        assignee: t.assignee_id ? profilesMap[t.assignee_id] || { full_name: null } : undefined,
+      }));
+
+      setTasks(enrichedTasks);
     }
     setLoading(false);
+  };
+
+  const fetchMembers = async () => {
+    const { data: membersData } = await supabase
+      .from("sprint_members")
+      .select("user_id")
+      .eq("sprint_id", sprintId)
+      .is("left_at", null);
+
+    if (membersData) {
+      const userIds = membersData.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+
+      if (profiles) {
+        // Get roles from members
+        const { data: rolesData } = await supabase
+          .from("sprint_members")
+          .select("user_id, role")
+          .eq("sprint_id", sprintId)
+          .is("left_at", null);
+
+        const roleMap = Object.fromEntries((rolesData || []).map(r => [r.user_id, r.role]));
+
+        setMembers(profiles.map(p => ({
+          user_id: p.id,
+          full_name: p.full_name,
+          role: roleMap[p.id] || "Member",
+        })));
+      }
+    }
+  };
+
+  const isOverdue = (task: Task) => {
+    return task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
   };
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) return;
 
+    const insertData: any = {
+      sprint_id: sprintId,
+      title: newTask.title,
+      description: newTask.description || null,
+      hours_estimated: newTask.hours_estimated ? parseInt(newTask.hours_estimated) : null,
+      priority: parseInt(newTask.priority),
+      assignee_id: newTask.assignee_id || null,
+      due_date: newTask.due_date || null,
+      created_by: user?.id || null,
+    };
+
     const { data, error } = await supabase
       .from("tasks")
-      .insert({
-        sprint_id: sprintId,
-        title: newTask.title,
-        description: newTask.description || null,
-        hours_estimated: newTask.hours_estimated ? parseInt(newTask.hours_estimated) : null,
-        priority: tasks.length + 1,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -111,11 +194,6 @@ export function SprintTaskBoard({
       return;
     }
 
-    setTasks([...tasks, data as Task]);
-    setNewTask({ title: "", description: "", hours_estimated: "" });
-    setShowAddTask(false);
-
-    // Update sprint to mark tasks assigned
     await supabase
       .from("sprints")
       .update({ tasks_assigned: true, last_activity_at: new Date().toISOString() })
@@ -123,6 +201,9 @@ export function SprintTaskBoard({
 
     await logSprintEvent(sprintId, "task_created", { task_title: newTask.title }, user?.id);
     toast({ title: "Task added" });
+    setNewTask({ title: "", description: "", hours_estimated: "", priority: "2", assignee_id: "", due_date: "" });
+    setShowAddTask(false);
+    fetchTasks();
   };
 
   const handleStatusChange = async (taskId: string, newStatus: Task["status"]) => {
@@ -131,9 +212,9 @@ export function SprintTaskBoard({
 
     const { error } = await supabase
       .from("tasks")
-      .update({ 
+      .update({
         status: newStatus,
-        ...(newStatus === "done" ? { completed_at: new Date().toISOString() } : {})
+        ...(newStatus === "done" ? { completed_at: new Date().toISOString() } : {}),
       })
       .eq("id", taskId);
 
@@ -142,12 +223,11 @@ export function SprintTaskBoard({
       return;
     }
 
-    setTasks(tasks.map((t) => (t.id === taskId ? { ...t, status: newStatus, ...(newStatus === "done" ? { completed_at: new Date().toISOString() } : {}) } : t)));
+    setTasks(tasks.map((t) =>
+      t.id === taskId ? { ...t, status: newStatus } : t
+    ));
 
-    // Update sprint progress
     await calculateSprintProgress(sprintId);
-    
-    // Update last activity
     await supabase
       .from("sprints")
       .update({ last_activity_at: new Date().toISOString() })
@@ -155,7 +235,7 @@ export function SprintTaskBoard({
 
     await logSprintEvent(
       sprintId,
-      "task_status_changed",
+      newStatus === "done" ? "task_completed" : "task_status_changed",
       { task_title: task.title, old_status: task.status, new_status: newStatus },
       user?.id
     );
@@ -165,7 +245,6 @@ export function SprintTaskBoard({
 
   const handleDeleteTask = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
-    
     const { error } = await supabase.from("tasks").delete().eq("id", taskId);
 
     if (error) {
@@ -175,13 +254,24 @@ export function SprintTaskBoard({
 
     setTasks(tasks.filter((t) => t.id !== taskId));
     await calculateSprintProgress(sprintId);
-
     if (task) {
       await logSprintEvent(sprintId, "task_deleted", { task_title: task.title }, user?.id);
     }
-
     onProgressUpdate();
     toast({ title: "Task deleted" });
+  };
+
+  const handleAssign = async (taskId: string, assigneeId: string) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ assignee_id: assigneeId || null })
+      .eq("id", taskId);
+
+    if (!error) {
+      const task = tasks.find(t => t.id === taskId);
+      await logSprintEvent(sprintId, "task_assigned", { task_title: task?.title }, user?.id);
+      fetchTasks();
+    }
   };
 
   const handleLogHours = async (taskId: string, hours: number) => {
@@ -189,7 +279,6 @@ export function SprintTaskBoard({
     if (!task) return;
 
     const newHours = (task.hours_logged || 0) + hours;
-
     const { error } = await supabase
       .from("tasks")
       .update({ hours_logged: newHours })
@@ -199,7 +288,6 @@ export function SprintTaskBoard({
 
     setTasks(tasks.map((t) => (t.id === taskId ? { ...t, hours_logged: newHours } : t)));
 
-    // Update member hours
     if (user) {
       const { data: member } = await supabase
         .from("sprint_members")
@@ -223,15 +311,38 @@ export function SprintTaskBoard({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-founder"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  const overdueTasks = tasks.filter(isOverdue);
+
   return (
     <div className="space-y-6">
+      {/* Overdue Warning */}
+      {overdueTasks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-xl border-2 border-red-500/30 bg-red-500/5"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <div>
+              <p className="font-medium text-red-600">
+                {overdueTasks.length} Overdue Task{overdueTasks.length > 1 ? "s" : ""}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {overdueTasks.map(t => t.title).join(", ")}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Add Task Button */}
-      {canEdit && (
+      {canManageTasks && (
         <div className="flex justify-end">
           <Button variant="founder" onClick={() => setShowAddTask(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -242,10 +353,7 @@ export function SprintTaskBoard({
 
       {/* Add Task Form */}
       {showAddTask && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-4">
@@ -260,13 +368,52 @@ export function SprintTaskBoard({
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   rows={2}
                 />
-                <Input
-                  type="number"
-                  placeholder="Estimated hours (optional)"
-                  value={newTask.hours_estimated}
-                  onChange={(e) => setNewTask({ ...newTask, hours_estimated: e.target.value })}
-                  className="w-48"
-                />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Priority</label>
+                    <select
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="3">High</option>
+                      <option value="2">Medium</option>
+                      <option value="1">Low</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Assign to</label>
+                    <select
+                      value={newTask.assignee_id}
+                      onChange={(e) => setNewTask({ ...newTask, assignee_id: e.target.value })}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Unassigned</option>
+                      {members.map((m) => (
+                        <option key={m.user_id} value={m.user_id}>
+                          {m.full_name || "Anonymous"} ({m.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Est. Hours</label>
+                    <Input
+                      type="number"
+                      placeholder="Hours"
+                      value={newTask.hours_estimated}
+                      onChange={(e) => setNewTask({ ...newTask, hours_estimated: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Due Date</label>
+                    <Input
+                      type="date"
+                      value={newTask.due_date}
+                      onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="founder" onClick={handleAddTask}>
                     <Save className="w-4 h-4 mr-2" />
@@ -283,7 +430,7 @@ export function SprintTaskBoard({
         </motion.div>
       )}
 
-      {/* Task Board */}
+      {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {columns.map((column) => {
           const columnTasks = tasks.filter((t) => t.status === column.id);
@@ -293,15 +440,7 @@ export function SprintTaskBoard({
             <Card key={column.id}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Icon
-                    className={`w-5 h-5 ${
-                      column.id === "done"
-                        ? "text-green-600"
-                        : column.id === "in_progress"
-                        ? "text-yellow-600"
-                        : "text-muted-foreground"
-                    }`}
-                  />
+                  <Icon className={`w-5 h-5 ${column.color}`} />
                   {column.title}
                   <Badge variant="secondary" className="ml-auto">
                     {columnTasks.length}
@@ -310,108 +449,135 @@ export function SprintTaskBoard({
               </CardHeader>
               <CardContent className="space-y-3 min-h-[200px]">
                 {columnTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No tasks
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-8">No tasks</p>
                 ) : (
-                  columnTasks.map((task) => (
-                    <motion.div
-                      key={task.id}
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="p-3 rounded-lg border border-border bg-card hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="font-medium text-sm">{task.title}</h4>
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleDeleteTask(task.id)}
+                  columnTasks.map((task) => {
+                    const overdue = isOverdue(task);
+                    const prio = priorityLabels[task.priority] || priorityLabels[2];
+
+                    return (
+                      <motion.div
+                        key={task.id}
+                        layout
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className={`p-3 rounded-lg border transition-shadow hover:shadow-md ${
+                          overdue ? "border-red-500/50 bg-red-500/5" : "border-border bg-card"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{task.title}</h4>
+                            {overdue && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <AlertTriangle className="w-3 h-3 text-red-600" />
+                                <span className="text-xs text-red-600 font-medium">Overdue</span>
+                              </div>
+                            )}
+                          </div>
+                          {canManageTasks && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleDeleteTask(task.id)}
+                            >
+                              <Trash2 className="w-3 h-3 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                        )}
+
+                        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                          <Badge className={`text-xs border ${prio.className}`}>{prio.label}</Badge>
+                          {task.hours_estimated && (
+                            <Badge variant="outline" className="text-xs">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {task.hours_logged}/{task.hours_estimated}h
+                            </Badge>
+                          )}
+                          {task.due_date && (
+                            <Badge variant="outline" className="text-xs">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Assignee */}
+                        {canManageTasks ? (
+                          <select
+                            value={task.assignee_id || ""}
+                            onChange={(e) => handleAssign(task.id, e.target.value)}
+                            className="w-full text-xs rounded border border-border bg-background px-2 py-1 mb-2"
                           >
-                            <Trash2 className="w-3 h-3 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-
-                      {task.description && (
-                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                          {task.description}
-                        </p>
-                      )}
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {task.hours_estimated && (
-                          <Badge variant="outline" className="text-xs">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {task.hours_logged}/{task.hours_estimated}h
-                          </Badge>
-                        )}
-                        {task.assignee?.full_name && (
-                          <Badge variant="secondary" className="text-xs">
+                            <option value="">Unassigned</option>
+                            {members.map((m) => (
+                              <option key={m.user_id} value={m.user_id}>
+                                {m.full_name || "Anonymous"}
+                              </option>
+                            ))}
+                          </select>
+                        ) : task.assignee?.full_name ? (
+                          <Badge variant="secondary" className="text-xs mb-2">
                             <User className="w-3 h-3 mr-1" />
                             {task.assignee.full_name}
                           </Badge>
+                        ) : null}
+
+                        {/* Status Change */}
+                        {canEdit && (
+                          <div className="flex gap-1">
+                            {column.id !== "todo" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={() =>
+                                  handleStatusChange(task.id, column.id === "in_progress" ? "todo" : "in_progress")
+                                }
+                              >
+                                ← Back
+                              </Button>
+                            )}
+                            {column.id !== "done" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7 ml-auto"
+                                onClick={() =>
+                                  handleStatusChange(task.id, column.id === "todo" ? "in_progress" : "done")
+                                }
+                              >
+                                Forward →
+                              </Button>
+                            )}
+                          </div>
                         )}
-                      </div>
 
-                      {/* Status Change Buttons */}
-                      {canEdit && (
-                        <div className="flex gap-1 mt-3">
-                          {column.id !== "todo" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs h-7"
-                              onClick={() =>
-                                handleStatusChange(
-                                  task.id,
-                                  column.id === "in_progress" ? "todo" : "in_progress"
-                                )
-                              }
-                            >
-                              ← Move Back
-                            </Button>
-                          )}
-                          {column.id !== "done" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs h-7 ml-auto"
-                              onClick={() =>
-                                handleStatusChange(
-                                  task.id,
-                                  column.id === "todo" ? "in_progress" : "done"
-                                )
-                              }
-                            >
-                              Move Forward →
-                            </Button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Log Hours */}
-                      {canEdit && column.id === "in_progress" && (
-                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
-                          <span className="text-xs text-muted-foreground">Log:</span>
-                          {[1, 2, 4].map((h) => (
-                            <Button
-                              key={h}
-                              variant="outline"
-                              size="sm"
-                              className="h-6 text-xs px-2"
-                              onClick={() => handleLogHours(task.id, h)}
-                            >
-                              +{h}h
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))
+                        {/* Log Hours */}
+                        {canEdit && column.id === "in_progress" && (
+                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
+                            <span className="text-xs text-muted-foreground">Log:</span>
+                            {[1, 2, 4].map((h) => (
+                              <Button
+                                key={h}
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-xs px-2"
+                                onClick={() => handleLogHours(task.id, h)}
+                              >
+                                +{h}h
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })
                 )}
               </CardContent>
             </Card>
