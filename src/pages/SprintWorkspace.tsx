@@ -410,14 +410,9 @@ export default function SprintWorkspace() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Sprint Health</p>
+                <p className="text-sm text-muted-foreground">Sprint Risk</p>
               </div>
-              <Badge className={`${getHealthBadgeColor(health?.status || "")} text-sm px-3 py-1`}>
-                {health?.status === "healthy" && <CheckCircle2 className="w-4 h-4 mr-1" />}
-                {health?.status === "warning" && <AlertTriangle className="w-4 h-4 mr-1" />}
-                {health?.status === "critical" && <AlertTriangle className="w-4 h-4 mr-1" />}
-                {health?.status}
-              </Badge>
+              <RiskIndicator sprintId={sprint.id} compact />
             </CardContent>
           </Card>
         </div>
