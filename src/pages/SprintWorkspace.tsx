@@ -419,10 +419,20 @@ export default function SprintWorkspace() {
 
         {/* Main Content */}
         <Tabs defaultValue="tasks" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">
               <Target className="w-4 h-4 mr-2" />
               Tasks
+            </TabsTrigger>
+            {isFounder && (
+              <TabsTrigger value="ai-planner">
+                <Brain className="w-4 h-4 mr-2" />
+                AI Planner
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="risk">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Risk
             </TabsTrigger>
             <TabsTrigger value="team">
               <Users className="w-4 h-4 mr-2" />
@@ -452,6 +462,22 @@ export default function SprintWorkspace() {
               sprintStatus={sprint.status}
               onProgressUpdate={fetchSprintData}
             />
+          </TabsContent>
+
+          {isFounder && (
+            <TabsContent value="ai-planner">
+              <AISprintPlanner
+                sprintId={sprint.id}
+                ideaDescription={sprint.idea.pitch || sprint.idea.title}
+                industry={sprint.idea.industry || []}
+                sprintDuration={sprint.duration_days}
+                onTasksCreated={fetchSprintData}
+              />
+            </TabsContent>
+          )}
+
+          <TabsContent value="risk">
+            <RiskIndicator sprintId={sprint.id} />
           </TabsContent>
 
           <TabsContent value="team">
