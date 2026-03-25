@@ -27,6 +27,10 @@ import { SprintDemoDay } from "@/components/sprint/SprintDemoDay";
 import { EquityChart } from "@/components/sprint/EquityChart";
 import { AISprintPlanner } from "@/components/sprint/AISprintPlanner";
 import { RiskIndicator } from "@/components/sprint/RiskIndicator";
+import { ExecutionGaps } from "@/components/sprint/ExecutionGaps";
+import { WeeklyReport } from "@/components/sprint/WeeklyReport";
+import { PitchGenerator } from "@/components/sprint/PitchGenerator";
+import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import {
   Rocket,
   ArrowLeft,
@@ -404,37 +408,36 @@ export default function SprintWorkspace() {
 
         {/* Main Content */}
         <Tabs defaultValue="tasks" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+          <TabsList className="flex flex-wrap w-full lg:w-auto lg:inline-flex gap-1">
             <TabsTrigger value="tasks">
-              <Target className="w-4 h-4 mr-2" />
-              Tasks
+              <Target className="w-4 h-4 mr-2" />Tasks
             </TabsTrigger>
             {isFounder && (
               <TabsTrigger value="ai-planner">
-                <Brain className="w-4 h-4 mr-2" />
-                AI Planner
+                <Brain className="w-4 h-4 mr-2" />AI Planner
               </TabsTrigger>
             )}
+            <TabsTrigger value="gaps">
+              <ShieldCheck className="w-4 h-4 mr-2" />Gaps
+            </TabsTrigger>
             <TabsTrigger value="risk">
-              <ShieldCheck className="w-4 h-4 mr-2" />
-              Risk
+              <ShieldCheck className="w-4 h-4 mr-2" />Risk
+            </TabsTrigger>
+            <TabsTrigger value="report">
+              <Activity className="w-4 h-4 mr-2" />Report
             </TabsTrigger>
             <TabsTrigger value="team">
-              <Users className="w-4 h-4 mr-2" />
-              Team
+              <Users className="w-4 h-4 mr-2" />Team
             </TabsTrigger>
             <TabsTrigger value="equity">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Equity
+              <TrendingUp className="w-4 h-4 mr-2" />Equity
             </TabsTrigger>
             <TabsTrigger value="timeline">
-              <Activity className="w-4 h-4 mr-2" />
-              Timeline
+              <Activity className="w-4 h-4 mr-2" />Timeline
             </TabsTrigger>
             {sprint.status === "completed" && (
               <TabsTrigger value="demo">
-                <Video className="w-4 h-4 mr-2" />
-                Demo Day
+                <Video className="w-4 h-4 mr-2" />Demo Day
               </TabsTrigger>
             )}
           </TabsList>
@@ -461,8 +464,16 @@ export default function SprintWorkspace() {
             </TabsContent>
           )}
 
+          <TabsContent value="gaps">
+            <ExecutionGaps sprintId={sprint.id} />
+          </TabsContent>
+
           <TabsContent value="risk">
             <RiskIndicator sprintId={sprint.id} />
+          </TabsContent>
+
+          <TabsContent value="report">
+            <WeeklyReport sprintId={sprint.id} />
           </TabsContent>
 
           <TabsContent value="team">

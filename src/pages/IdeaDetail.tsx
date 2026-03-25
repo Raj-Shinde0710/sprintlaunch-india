@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { IdeaTeamSection } from "@/components/idea/IdeaTeamSection";
 import { ApplicationFormDialog } from "@/components/sprint/ApplicationFormDialog";
 import { FounderApplicationManager } from "@/components/sprint/FounderApplicationManager";
+import { PitchGenerator } from "@/components/sprint/PitchGenerator";
+import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { 
   MapPin, Clock, Users, Verified, ArrowLeft, Calendar, Target,
   Briefcase, DollarSign, Lock, Rocket, UserPlus, Eye, CheckCircle2, XCircle
@@ -358,6 +360,16 @@ export default function IdeaDetail() {
                   <FounderApplicationManager sprintId={sprint.id} />
                 </motion.div>
               )}
+
+              {/* AI Builder Ranking */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                <BuilderRanking ideaId={idea.id} />
+              </motion.div>
+
+              {/* AI Pitch Generator */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <PitchGenerator ideaId={idea.id} />
+              </motion.div>
             </div>
 
             {/* Sidebar */}

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateSprintProgress, logSprintEvent } from "@/lib/sprint-logic";
+import { SmartAssignment } from "@/components/sprint/SmartAssignment";
 import {
   Plus,
   Clock,
@@ -414,7 +415,7 @@ export function SprintTaskBoard({
                     />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button variant="founder" onClick={handleAddTask}>
                     <Save className="w-4 h-4 mr-2" />
                     Add Task
@@ -423,6 +424,12 @@ export function SprintTaskBoard({
                     <X className="w-4 h-4 mr-2" />
                     Cancel
                   </Button>
+                  <SmartAssignment
+                    sprintId={sprintId}
+                    taskTitle={newTask.title}
+                    taskDescription={newTask.description}
+                    onAssign={(userId) => setNewTask({ ...newTask, assignee_id: userId })}
+                  />
                 </div>
               </div>
             </CardContent>
