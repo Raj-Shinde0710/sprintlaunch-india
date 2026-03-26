@@ -76,6 +76,7 @@ export default function BuilderWorkspace() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<SprintMember[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [equityDist, setEquityDist] = useState<EquityDistribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoursToLog, setHoursToLog] = useState(1);
 
