@@ -134,67 +134,93 @@ export async function calculateEquityDistribution(
     .select(`
       user_id,
       role,
-      hours_logged,
-      hours_committed,
-      is_founder,
-      commitment_deposit,
-      profiles:user_id (
-        full_name
-      )
+      is_founder
     `)
     .eq("sprint_id", sprintId)
     .is("left_at", null);
 
   if (!members || members.length === 0) return [];
 
-  // Fetch tasks to count completed per member
+  const userIds = members.map((m) => m.user_id);
+  const { data: profiles } = userIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds)
+    : { data: [] as { id: string; full_name: string | null }[] };
+
+  const profileMap = new Map((profiles || []).map((p) => [p.id, p.full_name]));
+
+  // Fetch tasks to count completed per member and total logged hours (actual hours)
   const { data: tasks } = await supabase
     .from("tasks")
-    .select("assignee_id, status")
+    .select("assignee_id, status, hours_logged")
     .eq("sprint_id", sprintId);
 
   const taskCountByUser: Record<string, number> = {};
+  const hoursByUser: Record<string, number> = {};
+
   (tasks || []).forEach((t) => {
-    if (t.status === "done" && t.assignee_id) {
-      taskCountByUser[t.assignee_id] = (taskCountByUser[t.assignee_id] || 0) + 1;
+    if (t.assignee_id) {
+      hoursByUser[t.assignee_id] = (hoursByUser[t.assignee_id] || 0) + (Number(t.hours_logged) || 0);
+      if (t.status === "done") {
+        taskCountByUser[t.assignee_id] = (taskCountByUser[t.assignee_id] || 0) + 1;
+      }
     }
   });
 
   const TASK_WEIGHT = 5;
-  const HOUR_WEIGHT = 1;
-  const FOUNDER_BASELINE = 20;
+  const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+  const noTasksYet = !tasks || tasks.length === 0;
 
-  // Calculate total contribution points
-  const totalContribution = members.reduce((acc, m) => {
+  const memberScores = members.map((m) => {
     const tasksCompleted = taskCountByUser[m.user_id] || 0;
-    const contribution =
-      tasksCompleted * TASK_WEIGHT +
-      (m.hours_logged || 0) * HOUR_WEIGHT +
-      (m.is_founder ? FOUNDER_BASELINE : 0) +
-      (Number(m.commitment_deposit) || 0) / 10000;
-    return acc + contribution;
-  }, 0);
+    const hoursLogged = hoursByUser[m.user_id] || 0;
 
-  if (totalContribution === 0) return [];
-
-  return members.map((m) => {
-    const tasksCompleted = taskCountByUser[m.user_id] || 0;
-    const contribution =
-      tasksCompleted * TASK_WEIGHT +
-      (m.hours_logged || 0) * HOUR_WEIGHT +
-      (m.is_founder ? FOUNDER_BASELINE : 0) +
-      (Number(m.commitment_deposit) || 0) / 10000;
-
-    const equityShare = Math.round((contribution / totalContribution) * 100 * 100) / 100;
+    // If no tasks exist yet, give baseline contribution to avoid zero division
+    const contributionScore = noTasksYet
+      ? 1
+      : tasksCompleted * TASK_WEIGHT + hoursLogged;
 
     return {
-      userId: m.user_id,
-      userName: (m.profiles as any)?.full_name || "Anonymous",
-      role: m.role,
-      hoursLogged: m.hours_logged || 0,
+      member: m,
+      tasksCompleted,
+      hoursLogged,
+      contributionScore,
+    };
+  });
+
+  // Single member always gets full equity
+  if (memberScores.length === 1) {
+    const onlyMember = memberScores[0];
+    return [{
+      userId: onlyMember.member.user_id,
+      userName: profileMap.get(onlyMember.member.user_id) || "Anonymous",
+      role: onlyMember.member.role,
+      hoursLogged: onlyMember.hoursLogged,
+      tasksCompleted: onlyMember.tasksCompleted,
+      equityShare: 100,
+      isFounder: onlyMember.member.is_founder || false,
+    }];
+  }
+
+  const totalScore = memberScores.reduce((sum, m) => sum + m.contributionScore, 0);
+  const shouldDistributeEqually = noTasksYet || totalScore <= 0;
+  const equalShare = roundToTwo(100 / memberScores.length);
+
+  return memberScores.map(({ member, tasksCompleted, hoursLogged, contributionScore }) => {
+    const equityShare = shouldDistributeEqually
+      ? equalShare
+      : roundToTwo((contributionScore / totalScore) * 100);
+
+    return {
+      userId: member.user_id,
+      userName: profileMap.get(member.user_id) || "Anonymous",
+      role: member.role,
+      hoursLogged,
       tasksCompleted,
       equityShare,
-      isFounder: m.is_founder || false,
+      isFounder: member.is_founder || false,
     };
   });
 }
