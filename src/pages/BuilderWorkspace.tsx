@@ -108,11 +108,35 @@ export default function BuilderWorkspace() {
 
     const { data: membersData } = await supabase
       .from("sprint_members")
-      .select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder, profile:profiles!sprint_members_user_id_fkey(full_name, execution_score)")
+      .select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder")
       .eq("sprint_id", sprintId)
       .is("left_at", null);
 
-    const membersList = (membersData || []) as unknown as SprintMember[];
+    const memberRows = (membersData || []) as unknown as Omit<SprintMember, "profile">[];
+    let membersList: SprintMember[] = [];
+
+    if (memberRows.length > 0) {
+      const userIds = memberRows.map((member) => member.user_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, full_name, execution_score")
+        .in("id", userIds);
+
+      const profileById = new Map((profilesData || []).map((profile) => [profile.id, profile]));
+      membersList = memberRows.map((member) => {
+        const profile = profileById.get(member.user_id);
+        return {
+          ...member,
+          profile: profile
+            ? {
+                full_name: profile.full_name,
+                execution_score: profile.execution_score,
+              }
+            : null,
+        };
+      });
+    }
+
     setMembers(membersList);
     const me = membersList.find((m) => m.user_id === user.id);
     if (me) {
@@ -191,6 +215,11 @@ export default function BuilderWorkspace() {
 
   const myTasks = tasks.filter((t) => t.assignee_id === user?.id);
   const myCompleted = myTasks.filter((t) => t.status === "done").length;
+  const myEquity = equityDist.find((entry) => entry.userId === user?.id);
+  const myContributionScore = (myEquity?.tasksCompleted || 0) * 5 + (myEquity?.hoursLogged || 0);
+  const noContributionsYet =
+    equityDist.length > 0 &&
+    equityDist.every((entry) => entry.tasksCompleted === 0 && entry.hoursLogged === 0);
 
   if (loading) {
     return (
@@ -252,7 +281,7 @@ export default function BuilderWorkspace() {
           <Card>
             <CardContent className="pt-6 text-center">
               <TrendingUp className="w-6 h-6 text-founder mx-auto mb-2" />
-              <p className="text-2xl font-bold">{myMembership?.equity_share?.toFixed(1) || 0}%</p>
+              <p className="text-2xl font-bold">{(myEquity?.equityShare || 0).toFixed(2)}%</p>
               <p className="text-xs text-muted-foreground">Equity Projection</p>
             </CardContent>
           </Card>
@@ -376,23 +405,27 @@ export default function BuilderWorkspace() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
-                        {m.profile?.full_name?.charAt(0) || "?"}
+                {members.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No sprint members yet.</p>
+                ) : (
+                  members.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
+                          {m.profile?.full_name?.charAt(0) || "?"}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{m.profile?.full_name || "Anonymous"}</p>
+                          <p className="text-xs text-muted-foreground">{m.role}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{m.profile?.full_name || "Anonymous"}</p>
-                        <p className="text-xs text-muted-foreground">{m.role}</p>
+                      <div className="text-right">
+                        {m.is_founder && <Badge className="bg-founder/10 text-founder text-xs">Founder</Badge>}
+                        <p className="text-xs text-muted-foreground">Score: {m.profile?.execution_score || 50}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      {m.is_founder && <Badge className="bg-founder/10 text-founder text-xs">Founder</Badge>}
-                      <p className="text-xs text-muted-foreground">Score: {m.profile?.execution_score || 50}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </Card>
 
@@ -405,48 +438,53 @@ export default function BuilderWorkspace() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {(() => {
-                  const myEquity = equityDist.find((e) => e.userId === user?.id);
-                  return (
-                    <>
-                      <div className="text-center">
-                        <p className="text-3xl font-bold text-builder">
-                          {myEquity?.equityShare?.toFixed(1) || "0.0"}%
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {sprintStatus === "completed" ? "Final Equity" : "Projected Equity"}
-                        </p>
-                        <Progress value={myEquity?.equityShare || 0} className="h-2 mt-3" />
-                      </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-builder">
+                    {(myEquity?.equityShare || 0).toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sprintStatus === "completed" ? "Final Equity" : "Projected Equity"}
+                  </p>
+                  <Progress value={myEquity?.equityShare || 0} className="h-2 mt-3" />
+                </div>
 
-                      <div className="space-y-2 pt-2 border-t border-border">
-                        <div className="flex justify-between text-sm">
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <ListChecks className="w-3 h-3" /> Tasks Done
-                          </span>
-                          <span className="font-medium">{myEquity?.tasksCompleted || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Clock className="w-3 h-3" /> Hours
-                          </span>
-                          <span className="font-medium">{myMembership?.hours_logged || 0}h</span>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <ListChecks className="w-3 h-3" /> Tasks Done
+                    </span>
+                    <span className="font-medium">{myEquity?.tasksCompleted || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Clock className="w-3 h-3" /> Hours
+                    </span>
+                    <span className="font-medium">{myEquity?.hoursLogged || 0}h</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Your Contribution</span>
+                    <span className="font-medium">{myContributionScore}</span>
+                  </div>
+                </div>
+
+                {noContributionsYet && (
+                  <p className="text-xs text-muted-foreground rounded-lg bg-muted/40 p-2">
+                    No contributions yet — equity equally distributed
+                  </p>
+                )}
               </CardContent>
             </Card>
 
             {/* Team Equity Overview */}
-            {equityDist.length > 1 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Team Equity</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {[...equityDist]
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Team Equity</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {equityDist.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No sprint members yet.</p>
+                ) : (
+                  [...equityDist]
                     .sort((a, b) => b.equityShare - a.equityShare)
                     .map((m, i) => (
                       <div key={m.userId} className="flex items-center justify-between text-sm">
@@ -454,12 +492,12 @@ export default function BuilderWorkspace() {
                           {i === 0 && <Trophy className="w-3 h-3 text-yellow-500" />}
                           <span className={m.userId === user?.id ? "font-bold" : ""}>{m.userName}</span>
                         </span>
-                        <span className="font-medium">{m.equityShare.toFixed(1)}%</span>
+                        <span className="font-medium">{m.equityShare.toFixed(2)}%</span>
                       </div>
-                    ))}
-                </CardContent>
-              </Card>
-            )}
+                    ))
+                )}
+              </CardContent>
+            </Card>
 
             {/* Leave Sprint */}
             <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5" onClick={handleLeaveSprint}>

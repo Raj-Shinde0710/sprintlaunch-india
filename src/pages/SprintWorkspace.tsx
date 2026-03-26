@@ -148,32 +148,44 @@ export default function SprintWorkspace() {
     setHealth(getSprintHealth(sprintData));
     setChecklist(getSprintChecklist(sprintData));
 
-    // Fetch members
-    const { data: membersData } = await supabase
-      .from("sprint_members")
-      .select(`
-        id,
-        user_id,
-        role,
-        hours_committed,
-        hours_logged,
-        equity_share,
-        is_founder,
-        profile:profiles!sprint_members_user_id_fkey (
-          full_name,
-          avatar_url,
-          execution_score
-        )
-      `)
-      .eq("sprint_id", id)
-      .is("left_at", null);
+    const [{ data: membersData }, equity] = await Promise.all([
+      supabase
+        .from("sprint_members")
+        .select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder")
+        .eq("sprint_id", id)
+        .is("left_at", null),
+      calculateEquityDistribution(id),
+    ]);
 
-    if (membersData) {
-      setMembers(membersData as unknown as SprintMember[]);
+    const memberRows = (membersData || []) as unknown as Omit<SprintMember, "profile">[];
+
+    if (memberRows.length > 0) {
+      const userIds = memberRows.map((member) => member.user_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, execution_score")
+        .in("id", userIds);
+
+      const profileById = new Map((profilesData || []).map((profile) => [profile.id, profile]));
+      const hydratedMembers = memberRows.map((member) => {
+        const profile = profileById.get(member.user_id);
+        return {
+          ...member,
+          profile: profile
+            ? {
+                full_name: profile.full_name,
+                avatar_url: profile.avatar_url,
+                execution_score: profile.execution_score,
+              }
+            : null,
+        };
+      });
+
+      setMembers(hydratedMembers);
+    } else {
+      setMembers([]);
     }
 
-    // Calculate equity
-    const equity = await calculateEquityDistribution(id);
     setEquityDistribution(equity);
 
     setLoading(false);
@@ -272,6 +284,10 @@ export default function SprintWorkspace() {
         return "bg-muted text-muted-foreground";
     }
   };
+
+  const equityByUserId = new Map(
+    equityDistribution.map((entry) => [entry.userId, entry])
+  );
 
   return (
     <main className="min-h-screen bg-background">
@@ -482,42 +498,52 @@ export default function SprintWorkspace() {
                 <CardTitle>Team Members</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {members.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between p-4 rounded-xl border border-border"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                          <Users className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {member.profile?.full_name || "Anonymous"}
-                            </p>
-                            {member.is_founder && (
-                              <Badge className="bg-founder/10 text-founder text-xs">
-                                Founder
-                              </Badge>
-                            )}
+                {members.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No sprint members yet.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {members.map((member) => {
+                      const memberEquity = equityByUserId.get(member.user_id);
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between p-4 rounded-xl border border-border"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                              <Users className="w-6 h-6 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {member.profile?.full_name || "Anonymous"}
+                                </p>
+                                {member.is_founder && (
+                                  <Badge className="bg-founder/10 text-founder text-xs">
+                                    Founder
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">{member.role}</p>
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground">{member.role}</p>
+                          <div className="text-right">
+                            <p className="font-medium">{(memberEquity?.equityShare || 0).toFixed(2)}% equity</p>
+                            <p className="text-sm text-muted-foreground">
+                              {memberEquity?.tasksCompleted || 0} tasks · {memberEquity?.hoursLogged || 0}h logged
+                            </p>
+                            <Badge variant="outline" className="mt-1 text-xs">
+                              Score: {member.profile?.execution_score || 50}
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{member.equity_share.toFixed(1)}% equity</p>
-                        <p className="text-sm text-muted-foreground">
-                          {member.hours_logged}/{member.hours_committed} hours
-                        </p>
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          Score: {member.profile?.execution_score || 50}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
