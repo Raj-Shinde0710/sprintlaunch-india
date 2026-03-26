@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { calculateEquityDistribution, type EquityDistribution } from "@/lib/sprint-logic";
 import {
   ArrowLeft,
   Clock,
@@ -22,6 +23,8 @@ import {
   AlertTriangle,
   LogOut,
   Rocket,
+  ListChecks,
+  Trophy,
 } from "lucide-react";
 
 interface Task {
@@ -73,6 +76,7 @@ export default function BuilderWorkspace() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<SprintMember[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [equityDist, setEquityDist] = useState<EquityDistribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoursToLog, setHoursToLog] = useState(1);
 
@@ -132,6 +136,11 @@ export default function BuilderWorkspace() {
       .limit(20);
 
     setTimeline((timelineData || []) as TimelineEvent[]);
+
+    // Calculate equity
+    const equity = await calculateEquityDistribution(sprintId);
+    setEquityDist(equity);
+
     setLoading(false);
   };
 
@@ -387,26 +396,70 @@ export default function BuilderWorkspace() {
               </CardContent>
             </Card>
 
-            {/* Contribution Summary */}
+            {/* Contribution & Equity Breakdown */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">My Contribution</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="w-4 h-4 text-builder" />
+                  Your Equity
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tasks Done</span>
-                  <span className="font-medium">{myCompleted}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Hours</span>
-                  <span className="font-medium">{myMembership?.hours_logged || 0}h</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Equity</span>
-                  <span className="font-medium text-builder">{myMembership?.equity_share?.toFixed(1) || 0}%</span>
-                </div>
+              <CardContent className="space-y-4">
+                {(() => {
+                  const myEquity = equityDist.find((e) => e.userId === user?.id);
+                  return (
+                    <>
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-builder">
+                          {myEquity?.equityShare?.toFixed(1) || "0.0"}%
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {sprintStatus === "completed" ? "Final Equity" : "Projected Equity"}
+                        </p>
+                        <Progress value={myEquity?.equityShare || 0} className="h-2 mt-3" />
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <ListChecks className="w-3 h-3" /> Tasks Done
+                          </span>
+                          <span className="font-medium">{myEquity?.tasksCompleted || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="w-3 h-3" /> Hours
+                          </span>
+                          <span className="font-medium">{myMembership?.hours_logged || 0}h</span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
+
+            {/* Team Equity Overview */}
+            {equityDist.length > 1 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Team Equity</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {[...equityDist]
+                    .sort((a, b) => b.equityShare - a.equityShare)
+                    .map((m, i) => (
+                      <div key={m.userId} className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 truncate">
+                          {i === 0 && <Trophy className="w-3 h-3 text-yellow-500" />}
+                          <span className={m.userId === user?.id ? "font-bold" : ""}>{m.userName}</span>
+                        </span>
+                        <span className="font-medium">{m.equityShare.toFixed(1)}%</span>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Leave Sprint */}
             <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5" onClick={handleLeaveSprint}>

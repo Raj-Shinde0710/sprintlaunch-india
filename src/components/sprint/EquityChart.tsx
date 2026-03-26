@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { type EquityDistribution } from "@/lib/sprint-logic";
-import { TrendingUp, CheckCircle2, AlertCircle, User } from "lucide-react";
+import { TrendingUp, CheckCircle2, AlertCircle, User, Trophy, Clock, ListChecks } from "lucide-react";
 
 interface EquityChartProps {
   distribution: EquityDistribution[];
@@ -33,7 +34,6 @@ export function EquityChart({
   const handleFinalizeEquity = async () => {
     if (!isFounder) return;
 
-    // Update all members with their calculated equity
     for (const member of distribution) {
       await supabase
         .from("sprint_members")
@@ -49,6 +49,8 @@ export function EquityChart({
   };
 
   const totalEquity = distribution.reduce((acc, d) => acc + d.equityShare, 0);
+  const sorted = [...distribution].sort((a, b) => b.equityShare - a.equityShare);
+  const isCompleted = sprintStatus === "completed";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -57,7 +59,7 @@ export function EquityChart({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-founder" />
-            Live Equity Projection
+            {isCompleted ? "Final Equity Distribution" : "Live Equity Projection"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -69,7 +71,7 @@ export function EquityChart({
             <>
               {/* Visual Bar */}
               <div className="h-8 rounded-full overflow-hidden flex mb-6">
-                {distribution.map((member, i) => (
+                {sorted.map((member, i) => (
                   <div
                     key={member.userId}
                     className={`${colors[i % colors.length]} transition-all duration-500`}
@@ -81,7 +83,7 @@ export function EquityChart({
 
               {/* Member List */}
               <div className="space-y-3">
-                {distribution.map((member, i) => (
+                {sorted.map((member, i) => (
                   <div
                     key={member.userId}
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
@@ -93,20 +95,37 @@ export function EquityChart({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{member.userName}</span>
+                          {i === 0 && (
+                            <Trophy className="w-4 h-4 text-yellow-500" />
+                          )}
                           {member.isFounder && (
                             <Badge className="bg-founder/10 text-founder text-xs">
                               Founder
                             </Badge>
                           )}
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {member.role} • {member.hoursLogged}h logged
-                        </span>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <ListChecks className="w-3 h-3" />
+                            {member.tasksCompleted} tasks
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {member.hoursLogged}h
+                          </span>
+                          <span>{member.role}</span>
+                        </div>
                       </div>
                     </div>
-                    <span className="text-xl font-bold">
-                      {member.equityShare.toFixed(1)}%
-                    </span>
+                    <div className="text-right">
+                      <span className="text-xl font-bold">
+                        {member.equityShare.toFixed(1)}%
+                      </span>
+                      <Progress
+                        value={member.equityShare}
+                        className="h-1.5 w-20 mt-1"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -141,8 +160,7 @@ export function EquityChart({
               <div>
                 <p className="font-medium">Dynamic Calculation</p>
                 <p className="text-sm text-muted-foreground">
-                  Equity updates in real-time based on hours logged, role value,
-                  and founder commitment.
+                  Equity = (tasks_completed × 5 + hours_logged) / total_score × 100. Updates in real-time.
                 </p>
               </div>
             </div>
@@ -169,7 +187,7 @@ export function EquityChart({
             </div>
           </div>
 
-          {isFounder && sprintStatus === "completed" && (
+          {isFounder && isCompleted && (
             <div className="pt-4 border-t border-border">
               <p className="text-sm text-muted-foreground mb-3">
                 Ready to finalize? This will lock in the equity distribution.
@@ -181,7 +199,7 @@ export function EquityChart({
             </div>
           )}
 
-          {sprintStatus !== "completed" && (
+          {!isCompleted && (
             <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
               <p className="text-sm text-yellow-700">
                 ⚠️ Equity can only be finalized after the sprint is completed.
