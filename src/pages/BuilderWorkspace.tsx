@@ -136,6 +136,11 @@ export default function BuilderWorkspace() {
       .limit(20);
 
     setTimeline((timelineData || []) as TimelineEvent[]);
+
+    // Calculate equity
+    const equity = await calculateEquityDistribution(sprintId);
+    setEquityDist(equity);
+
     setLoading(false);
   };
 
