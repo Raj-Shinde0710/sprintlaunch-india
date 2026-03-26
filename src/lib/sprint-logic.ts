@@ -13,6 +13,7 @@ export interface EquityDistribution {
   userName: string;
   role: string;
   hoursLogged: number;
+  tasksCompleted: number;
   equityShare: number;
   isFounder: boolean;
 }
@@ -124,7 +125,7 @@ export function getSprintHealth(sprint: {
   };
 }
 
-// Calculate equity distribution
+// Calculate equity distribution (contribution-based with task completion)
 export async function calculateEquityDistribution(
   sprintId: string
 ): Promise<EquityDistribution[]> {
@@ -146,11 +147,30 @@ export async function calculateEquityDistribution(
 
   if (!members || members.length === 0) return [];
 
+  // Fetch tasks to count completed per member
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("assignee_id, status")
+    .eq("sprint_id", sprintId);
+
+  const taskCountByUser: Record<string, number> = {};
+  (tasks || []).forEach((t) => {
+    if (t.status === "done" && t.assignee_id) {
+      taskCountByUser[t.assignee_id] = (taskCountByUser[t.assignee_id] || 0) + 1;
+    }
+  });
+
+  const TASK_WEIGHT = 5;
+  const HOUR_WEIGHT = 1;
+  const FOUNDER_BASELINE = 20;
+
   // Calculate total contribution points
   const totalContribution = members.reduce((acc, m) => {
+    const tasksCompleted = taskCountByUser[m.user_id] || 0;
     const contribution =
-      (m.hours_logged || 0) * 1.0 +
-      (m.is_founder ? 20 : 0) +
+      tasksCompleted * TASK_WEIGHT +
+      (m.hours_logged || 0) * HOUR_WEIGHT +
+      (m.is_founder ? FOUNDER_BASELINE : 0) +
       (Number(m.commitment_deposit) || 0) / 10000;
     return acc + contribution;
   }, 0);
@@ -158,9 +178,11 @@ export async function calculateEquityDistribution(
   if (totalContribution === 0) return [];
 
   return members.map((m) => {
+    const tasksCompleted = taskCountByUser[m.user_id] || 0;
     const contribution =
-      (m.hours_logged || 0) * 1.0 +
-      (m.is_founder ? 20 : 0) +
+      tasksCompleted * TASK_WEIGHT +
+      (m.hours_logged || 0) * HOUR_WEIGHT +
+      (m.is_founder ? FOUNDER_BASELINE : 0) +
       (Number(m.commitment_deposit) || 0) / 10000;
 
     const equityShare = Math.round((contribution / totalContribution) * 100 * 100) / 100;
@@ -170,6 +192,7 @@ export async function calculateEquityDistribution(
       userName: (m.profiles as any)?.full_name || "Anonymous",
       role: m.role,
       hoursLogged: m.hours_logged || 0,
+      tasksCompleted,
       equityShare,
       isFounder: m.is_founder || false,
     };
