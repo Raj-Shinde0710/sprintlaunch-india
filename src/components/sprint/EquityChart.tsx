@@ -51,6 +51,9 @@ export function EquityChart({
   const totalEquity = distribution.reduce((acc, d) => acc + d.equityShare, 0);
   const sorted = [...distribution].sort((a, b) => b.equityShare - a.equityShare);
   const isCompleted = sprintStatus === "completed";
+  const hasNoContributions =
+    distribution.length > 0 &&
+    distribution.every((member) => member.tasksCompleted === 0 && member.hoursLogged === 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -69,6 +72,12 @@ export function EquityChart({
             </p>
           ) : (
             <>
+              {hasNoContributions && (
+                <div className="mb-4 p-3 rounded-lg bg-muted/40 text-sm text-muted-foreground">
+                  No contributions yet — equity equally distributed
+                </div>
+              )}
+
               {/* Visual Bar */}
               <div className="h-8 rounded-full overflow-hidden flex mb-6">
                 {sorted.map((member, i) => (
@@ -119,7 +128,7 @@ export function EquityChart({
                     </div>
                     <div className="text-right">
                       <span className="text-xl font-bold">
-                        {member.equityShare.toFixed(1)}%
+                        {member.equityShare.toFixed(2)}%
                       </span>
                       <Progress
                         value={member.equityShare}
@@ -140,7 +149,7 @@ export function EquityChart({
                       : "text-yellow-600"
                   }`}
                 >
-                  {totalEquity.toFixed(1)}%
+                  {totalEquity.toFixed(2)}%
                 </span>
               </div>
             </>
