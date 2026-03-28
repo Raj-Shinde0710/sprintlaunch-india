@@ -31,6 +31,7 @@ import { ExecutionGaps } from "@/components/sprint/ExecutionGaps";
 import { WeeklyReport } from "@/components/sprint/WeeklyReport";
 import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
+import { TeamChat } from "@/components/sprint/TeamChat";
 import {
   Rocket,
   ArrowLeft,
@@ -48,6 +49,7 @@ import {
   Calendar,
   Activity,
   Video,
+  MessageSquare,
 } from "lucide-react";
 
 interface Sprint {
@@ -456,6 +458,9 @@ export default function SprintWorkspace() {
                 <Video className="w-4 h-4 mr-2" />Demo Day
               </TabsTrigger>
             )}
+            <TabsTrigger value="chat">
+              <MessageSquare className="w-4 h-4 mr-2" />Chat
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks">
@@ -613,6 +618,10 @@ export default function SprintWorkspace() {
               />
             </TabsContent>
           )}
+
+          <TabsContent value="chat">
+            <TeamChat sprintId={sprint.id} />
+          </TabsContent>
         </Tabs>
       </div>
     </main>

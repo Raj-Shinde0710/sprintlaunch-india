@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { calculateEquityDistribution, type EquityDistribution } from "@/lib/sprint-logic";
+import { TeamChat } from "@/components/sprint/TeamChat";
 import {
   ArrowLeft,
   Clock,
@@ -498,6 +499,9 @@ export default function BuilderWorkspace() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Team Chat */}
+            {sprintId && <TeamChat sprintId={sprintId} />}
 
             {/* Leave Sprint */}
             <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5" onClick={handleLeaveSprint}>
