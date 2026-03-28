@@ -316,6 +316,47 @@ export type Database = {
           },
         ]
       }
+      sprint_commits: {
+        Row: {
+          commit_message: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          sprint_id: string
+          user_id: string
+        }
+        Insert: {
+          commit_message: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          sprint_id: string
+          user_id: string
+        }
+        Update: {
+          commit_message?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          sprint_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_commits_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprint_members: {
         Row: {
           commitment_deposit: number | null
