@@ -378,6 +378,38 @@ export type Database = {
           },
         ]
       }
+      sprint_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message_text: string
+          sender_id: string
+          sprint_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_text: string
+          sender_id: string
+          sprint_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_text?: string
+          sender_id?: string
+          sprint_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_messages_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprint_plans: {
         Row: {
           created_at: string | null
