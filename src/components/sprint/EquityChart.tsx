@@ -169,7 +169,7 @@ export function EquityChart({
               <div>
                 <p className="font-medium">Dynamic Calculation</p>
                 <p className="text-sm text-muted-foreground">
-                  Equity = (tasks_completed × 5 + hours_logged) / total_score × 100. Updates in real-time.
+                  Equity = (tasks_completed × 5 + commits × 3 + hours_logged) / total_score × 100. Updates in real-time.
                 </p>
               </div>
             </div>
