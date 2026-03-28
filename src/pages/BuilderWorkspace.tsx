@@ -500,6 +500,9 @@ export default function BuilderWorkspace() {
               </CardContent>
             </Card>
 
+            {/* Team Chat */}
+            {sprintId && <TeamChat sprintId={sprintId} />}
+
             {/* Leave Sprint */}
             <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5" onClick={handleLeaveSprint}>
               <LogOut className="w-4 h-4 mr-2" />
