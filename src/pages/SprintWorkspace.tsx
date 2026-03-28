@@ -32,6 +32,7 @@ import { WeeklyReport } from "@/components/sprint/WeeklyReport";
 import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { TeamChat } from "@/components/sprint/TeamChat";
+import { SprintRepository } from "@/components/sprint/SprintRepository";
 import {
   Rocket,
   ArrowLeft,
@@ -50,6 +51,7 @@ import {
   Activity,
   Video,
   MessageSquare,
+  GitCommitHorizontal,
 } from "lucide-react";
 
 interface Sprint {
@@ -458,6 +460,9 @@ export default function SprintWorkspace() {
                 <Video className="w-4 h-4 mr-2" />Demo Day
               </TabsTrigger>
             )}
+            <TabsTrigger value="repo">
+              <GitCommitHorizontal className="w-4 h-4 mr-2" />Repository
+            </TabsTrigger>
             <TabsTrigger value="chat">
               <MessageSquare className="w-4 h-4 mr-2" />Chat
             </TabsTrigger>
@@ -618,6 +623,10 @@ export default function SprintWorkspace() {
               />
             </TabsContent>
           )}
+
+          <TabsContent value="repo">
+            <SprintRepository sprintId={sprint.id} />
+          </TabsContent>
 
           <TabsContent value="chat">
             <TeamChat sprintId={sprint.id} />
