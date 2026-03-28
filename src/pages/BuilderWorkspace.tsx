@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { calculateEquityDistribution, type EquityDistribution } from "@/lib/sprint-logic";
+import { TeamChat } from "@/components/sprint/TeamChat";
 import {
   ArrowLeft,
   Clock,

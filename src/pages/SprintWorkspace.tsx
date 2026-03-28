@@ -49,7 +49,6 @@ import {
   Calendar,
   Activity,
   Video,
-  Video,
   MessageSquare,
 } from "lucide-react";
 
