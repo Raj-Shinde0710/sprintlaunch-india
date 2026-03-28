@@ -31,6 +31,7 @@ import { ExecutionGaps } from "@/components/sprint/ExecutionGaps";
 import { WeeklyReport } from "@/components/sprint/WeeklyReport";
 import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
+import { TeamChat } from "@/components/sprint/TeamChat";
 import {
   Rocket,
   ArrowLeft,
