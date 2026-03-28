@@ -535,35 +535,49 @@ export function SprintTaskBoard({
                           </Badge>
                         ) : null}
 
-                        {/* Status Change */}
-                        {canEdit && (
-                          <div className="flex gap-1">
-                            {column.id !== "todo" && (
+                        {/* Status Change - Always visible */}
+                        <div className="flex gap-1 mt-1">
+                          {task.status === "todo" && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="text-xs h-8 w-full"
+                              onClick={() => handleStatusChange(task.id, "in_progress")}
+                            >
+                              ▶ Start Task
+                            </Button>
+                          )}
+                          {task.status === "in_progress" && (
+                            <>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="text-xs h-7"
-                                onClick={() =>
-                                  handleStatusChange(task.id, column.id === "in_progress" ? "todo" : "in_progress")
-                                }
+                                className="text-xs h-8"
+                                onClick={() => handleStatusChange(task.id, "todo")}
                               >
                                 ← Back
                               </Button>
-                            )}
-                            {column.id !== "done" && (
                               <Button
-                                variant="ghost"
+                                variant="default"
                                 size="sm"
-                                className="text-xs h-7 ml-auto"
-                                onClick={() =>
-                                  handleStatusChange(task.id, column.id === "todo" ? "in_progress" : "done")
-                                }
+                                className="text-xs h-8 flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleStatusChange(task.id, "done")}
                               >
-                                Forward →
+                                ✓ Mark as Done
                               </Button>
-                            )}
-                          </div>
-                        )}
+                            </>
+                          )}
+                          {task.status === "done" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8"
+                              onClick={() => handleStatusChange(task.id, "in_progress")}
+                            >
+                              ← Reopen
+                            </Button>
+                          )}
+                        </div>
 
                         {/* Log Hours */}
                         {canEdit && column.id === "in_progress" && (
