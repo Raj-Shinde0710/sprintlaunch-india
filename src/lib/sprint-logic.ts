@@ -157,15 +157,22 @@ export async function calculateEquityDistribution(
     .select("assignee_id, status, hours_logged")
     .eq("sprint_id", sprintId);
 
-  // Fetch commits per user
+  // Fetch commits per user (file commits)
   const { data: commits } = await supabase
     .from("sprint_commits")
     .select("user_id")
     .eq("sprint_id", sprintId);
 
+  // Fetch code commits per user
+  const { data: codeCommits } = await supabase
+    .from("code_commits")
+    .select("user_id, lines_of_code")
+    .eq("sprint_id", sprintId);
+
   const taskCountByUser: Record<string, number> = {};
   const hoursByUser: Record<string, number> = {};
   const commitsByUser: Record<string, number> = {};
+  const linesByUser: Record<string, number> = {};
 
   (tasks || []).forEach((t) => {
     if (t.assignee_id) {
@@ -182,20 +189,28 @@ export async function calculateEquityDistribution(
     }
   });
 
+  (codeCommits || []).forEach((c) => {
+    if (c.user_id) {
+      commitsByUser[c.user_id] = (commitsByUser[c.user_id] || 0) + 1;
+      linesByUser[c.user_id] = (linesByUser[c.user_id] || 0) + (c.lines_of_code || 0);
+    }
+  });
+
   const TASK_WEIGHT = 5;
   const COMMIT_WEIGHT = 3;
+  const LINES_WEIGHT = 0.1;
   const roundToTwo = (value: number) => Math.round(value * 100) / 100;
-  const noTasksYet = (!tasks || tasks.length === 0) && (!commits || commits.length === 0);
+  const noTasksYet = (!tasks || tasks.length === 0) && (!commits || commits.length === 0) && (!codeCommits || codeCommits.length === 0);
 
   const memberScores = members.map((m) => {
     const tasksCompleted = taskCountByUser[m.user_id] || 0;
     const hoursLogged = hoursByUser[m.user_id] || 0;
     const commitsCount = commitsByUser[m.user_id] || 0;
+    const linesOfCode = linesByUser[m.user_id] || 0;
 
-    // If no tasks/commits exist yet, give baseline contribution to avoid zero division
     const contributionScore = noTasksYet
       ? 1
-      : tasksCompleted * TASK_WEIGHT + commitsCount * COMMIT_WEIGHT + hoursLogged;
+      : tasksCompleted * TASK_WEIGHT + commitsCount * COMMIT_WEIGHT + hoursLogged + linesOfCode * LINES_WEIGHT;
 
     return {
       member: m,
