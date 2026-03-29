@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      code_commits: {
+        Row: {
+          code_content: string
+          commit_message: string
+          created_at: string
+          file_name: string
+          id: string
+          language: string
+          lines_of_code: number
+          sprint_id: string
+          user_id: string
+        }
+        Insert: {
+          code_content: string
+          commit_message: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          language?: string
+          lines_of_code?: number
+          sprint_id: string
+          user_id: string
+        }
+        Update: {
+          code_content?: string
+          commit_message?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          language?: string
+          lines_of_code?: number
+          sprint_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_commits_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commitments: {
         Row: {
           amount: number
