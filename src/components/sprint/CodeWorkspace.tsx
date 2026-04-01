@@ -101,7 +101,7 @@ export function CodeWorkspace({ sprintId }: CodeWorkspaceProps) {
   const handleRunCode = async () => {
     setIsRunning(true);
     setShowOutput(true);
-    setOutput("Running...");
+    setOutput("⏳ Running...");
 
     try {
       const config = LANGUAGE_CONFIG[language];
@@ -111,16 +111,38 @@ export function CodeWorkspace({ sprintId }: CodeWorkspaceProps) {
         body: JSON.stringify({
           language: config.pistonLang,
           version: config.pistonVersion,
-          files: [{ content: code }],
+          files: [{ name: `main.${config.ext}`, content: code }],
         }),
       });
 
+      if (!response.ok) {
+        setOutput(`Error: API returned status ${response.status}`);
+        setIsRunning(false);
+        return;
+      }
+
       const result = await response.json();
-      const runOutput = result.run?.output || "No output";
-      const stderr = result.run?.stderr || "";
-      setOutput(stderr ? `${runOutput}\n\n--- Errors ---\n${stderr}` : runOutput);
-    } catch {
-      setOutput("Error: Could not connect to code execution service.");
+      const runOutput = result.run?.output || result.compile?.output || "";
+      const runStderr = result.run?.stderr || "";
+      const compileStderr = result.compile?.stderr || "";
+      const stderr = [compileStderr, runStderr].filter(Boolean).join("\n");
+
+      if (!runOutput && !stderr) {
+        setOutput("✅ Code executed successfully (no output)");
+      } else if (stderr && runOutput) {
+        setOutput(`${runOutput}\n\n--- Errors ---\n${stderr}`);
+      } else if (stderr) {
+        setOutput(`--- Errors ---\n${stderr}`);
+      } else {
+        setOutput(runOutput);
+      }
+
+      // Log execution to timeline
+      if (user) {
+        await logSprintEvent(sprintId, "code_executed", { language: config.label }, user.id);
+      }
+    } catch (err) {
+      setOutput(`Error: Could not connect to code execution service.\n${err instanceof Error ? err.message : ""}`);
     }
 
     setIsRunning(false);

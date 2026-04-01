@@ -306,7 +306,7 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
 
                   {/* Resume */}
                   {app.resume_url && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <FileText className="w-4 h-4 text-builder" />
                       <a
                         href={app.resume_url}
@@ -314,7 +314,16 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
                         rel="noopener noreferrer"
                         className="text-sm text-builder hover:underline flex items-center gap-1"
                       >
-                        View Resume <ExternalLink className="w-3 h-3" />
+                        <Eye className="w-3 h-3" /> View Resume
+                      </a>
+                      <a
+                        href={app.resume_url}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-builder hover:underline flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" /> Download
                       </a>
                     </div>
                   )}

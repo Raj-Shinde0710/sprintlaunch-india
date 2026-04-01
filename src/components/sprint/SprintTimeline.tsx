@@ -48,6 +48,11 @@ const eventConfig: Record<
   hours_logged: { icon: Clock, color: "text-builder", label: "Hours Logged" },
   inactivity_warning: { icon: AlertTriangle, color: "text-yellow-600", label: "Inactivity Warning" },
   auto_failed: { icon: XCircle, color: "text-red-600", label: "Auto-Failed" },
+  code_committed: { icon: CheckCircle2, color: "text-builder", label: "Code Committed" },
+  file_uploaded: { icon: Flag, color: "text-builder", label: "File Uploaded" },
+  file_downloaded: { icon: Flag, color: "text-foreground", label: "File Downloaded" },
+  code_executed: { icon: Play, color: "text-foreground", label: "Code Executed" },
+  message_sent: { icon: Activity, color: "text-foreground", label: "Message Sent" },
 };
 
 export function SprintTimeline({ sprintId }: SprintTimelineProps) {
@@ -85,6 +90,8 @@ export function SprintTimeline({ sprintId }: SprintTimelineProps) {
         return `Status changed from ${data.old_status} to ${data.new_status}`;
       case "task_created":
         return `Created task: "${data.task_title}"`;
+      case "task_completed":
+        return `Completed task: "${data.task_title}"`;
       case "task_status_changed":
         return `"${data.task_title}" moved to ${data.new_status}`;
       case "hours_logged":
@@ -95,6 +102,16 @@ export function SprintTimeline({ sprintId }: SprintTimelineProps) {
         return `Sprint inactive for ${data.days_inactive} days`;
       case "auto_failed":
         return `Sprint auto-failed: ${data.reason}`;
+      case "code_committed":
+        return `Committed code: "${data.commit_message}" (${data.language}, ${data.lines_of_code} lines)`;
+      case "file_uploaded":
+        return `Uploaded file: "${data.file_name}"`;
+      case "file_downloaded":
+        return `Downloaded file: "${data.file_name}"`;
+      case "code_executed":
+        return `Executed ${data.language} code`;
+      case "message_sent":
+        return `Sent a message in team chat`;
       default:
         return JSON.stringify(data);
     }
