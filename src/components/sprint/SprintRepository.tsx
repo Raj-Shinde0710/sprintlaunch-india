@@ -15,6 +15,8 @@ import {
   Clock,
   Trophy,
   Loader2,
+  Eye,
+  Download,
 } from "lucide-react";
 
 interface Commit {
