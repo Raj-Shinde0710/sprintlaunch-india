@@ -461,8 +461,8 @@ export default function SprintWorkspace() {
                 <Video className="w-4 h-4 mr-2" />Demo Day
               </TabsTrigger>
             )}
-            <TabsTrigger value="code">
-              <Code2 className="w-4 h-4 mr-2" />Code
+            <TabsTrigger value="mentor">
+              <Brain className="w-4 h-4 mr-2" />AI Mentor
             </TabsTrigger>
             <TabsTrigger value="repo">
               <GitCommitHorizontal className="w-4 h-4 mr-2" />Repository
