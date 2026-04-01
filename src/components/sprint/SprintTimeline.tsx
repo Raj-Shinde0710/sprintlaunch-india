@@ -48,6 +48,11 @@ const eventConfig: Record<
   hours_logged: { icon: Clock, color: "text-builder", label: "Hours Logged" },
   inactivity_warning: { icon: AlertTriangle, color: "text-yellow-600", label: "Inactivity Warning" },
   auto_failed: { icon: XCircle, color: "text-red-600", label: "Auto-Failed" },
+  code_committed: { icon: CheckCircle2, color: "text-builder", label: "Code Committed" },
+  file_uploaded: { icon: Flag, color: "text-builder", label: "File Uploaded" },
+  file_downloaded: { icon: Flag, color: "text-foreground", label: "File Downloaded" },
+  code_executed: { icon: Play, color: "text-foreground", label: "Code Executed" },
+  message_sent: { icon: Activity, color: "text-foreground", label: "Message Sent" },
 };
 
 export function SprintTimeline({ sprintId }: SprintTimelineProps) {
