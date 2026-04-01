@@ -13,7 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { calculateEquityDistribution, type EquityDistribution } from "@/lib/sprint-logic";
 import { TeamChat } from "@/components/sprint/TeamChat";
 import { SprintRepository } from "@/components/sprint/SprintRepository";
-import { CodeWorkspace } from "@/components/sprint/CodeWorkspace";
+import { AIMentor } from "@/components/sprint/AIMentor";
 import {
   ArrowLeft,
   Clock,
