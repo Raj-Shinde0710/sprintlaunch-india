@@ -266,12 +266,30 @@ export function SprintRepository({ sprintId }: SprintRepositoryProps) {
                               <span>{formatSize(commit.file_size)}</span>
                             </div>
                           </div>
-                          <Badge
-                            variant="outline"
-                            className="shrink-0 text-xs font-mono"
-                          >
-                            {commit.id.slice(0, 7)}
-                          </Badge>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(commit.file_url, "_blank")}
+                            >
+                              <Eye className="w-3 h-3 mr-1" /> View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              asChild
+                            >
+                              <a href={commit.file_url} download={commit.file_name} target="_blank" rel="noopener noreferrer">
+                                <Download className="w-3 h-3 mr-1" /> Download
+                              </a>
+                            </Button>
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-mono"
+                            >
+                              {commit.id.slice(0, 7)}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))}
