@@ -628,8 +628,8 @@ export default function SprintWorkspace() {
             </TabsContent>
           )}
 
-          <TabsContent value="code">
-            <CodeWorkspace sprintId={sprint.id} />
+          <TabsContent value="mentor">
+            <AIMentor sprintId={sprint.id} />
           </TabsContent>
 
           <TabsContent value="repo">

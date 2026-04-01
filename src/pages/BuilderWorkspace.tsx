@@ -396,8 +396,8 @@ export default function BuilderWorkspace() {
               </CardContent>
             </Card>
 
-            {/* Code Workspace */}
-            {sprintId && <CodeWorkspace sprintId={sprintId} />}
+            {/* AI Mentor */}
+            {sprintId && <AIMentor sprintId={sprintId} />}
 
             {/* Sprint Repository */}
             {sprintId && <SprintRepository sprintId={sprintId} />}
