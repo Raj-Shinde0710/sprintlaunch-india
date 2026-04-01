@@ -33,7 +33,7 @@ import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { TeamChat } from "@/components/sprint/TeamChat";
 import { SprintRepository } from "@/components/sprint/SprintRepository";
-import { CodeWorkspace } from "@/components/sprint/CodeWorkspace";
+import { AIMentor } from "@/components/sprint/AIMentor";
 import {
   Rocket,
   ArrowLeft,
@@ -53,7 +53,6 @@ import {
   Video,
   MessageSquare,
   GitCommitHorizontal,
-  Code2,
 } from "lucide-react";
 
 interface Sprint {
@@ -462,8 +461,8 @@ export default function SprintWorkspace() {
                 <Video className="w-4 h-4 mr-2" />Demo Day
               </TabsTrigger>
             )}
-            <TabsTrigger value="code">
-              <Code2 className="w-4 h-4 mr-2" />Code
+            <TabsTrigger value="mentor">
+              <Brain className="w-4 h-4 mr-2" />AI Mentor
             </TabsTrigger>
             <TabsTrigger value="repo">
               <GitCommitHorizontal className="w-4 h-4 mr-2" />Repository
@@ -629,8 +628,8 @@ export default function SprintWorkspace() {
             </TabsContent>
           )}
 
-          <TabsContent value="code">
-            <CodeWorkspace sprintId={sprint.id} />
+          <TabsContent value="mentor">
+            <AIMentor sprintId={sprint.id} />
           </TabsContent>
 
           <TabsContent value="repo">
