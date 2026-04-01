@@ -90,6 +90,8 @@ export function SprintTimeline({ sprintId }: SprintTimelineProps) {
         return `Status changed from ${data.old_status} to ${data.new_status}`;
       case "task_created":
         return `Created task: "${data.task_title}"`;
+      case "task_completed":
+        return `Completed task: "${data.task_title}"`;
       case "task_status_changed":
         return `"${data.task_title}" moved to ${data.new_status}`;
       case "hours_logged":
@@ -100,6 +102,16 @@ export function SprintTimeline({ sprintId }: SprintTimelineProps) {
         return `Sprint inactive for ${data.days_inactive} days`;
       case "auto_failed":
         return `Sprint auto-failed: ${data.reason}`;
+      case "code_committed":
+        return `Committed code: "${data.commit_message}" (${data.language}, ${data.lines_of_code} lines)`;
+      case "file_uploaded":
+        return `Uploaded file: "${data.file_name}"`;
+      case "file_downloaded":
+        return `Downloaded file: "${data.file_name}"`;
+      case "code_executed":
+        return `Executed ${data.language} code`;
+      case "message_sent":
+        return `Sent a message in team chat`;
       default:
         return JSON.stringify(data);
     }

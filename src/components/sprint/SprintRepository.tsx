@@ -132,6 +132,10 @@ export function SprintRepository({ sprintId }: SprintRepositoryProps) {
         file_size: selectedFile.size,
       });
 
+      // Log to timeline
+      const { logSprintEvent } = await import("@/lib/sprint-logic");
+      await logSprintEvent(sprintId, "file_uploaded", { file_name: selectedFile.name }, user.id);
+
       toast({ title: "Commit pushed!", description: selectedFile.name });
       setCommitMessage("");
       setSelectedFile(null);
