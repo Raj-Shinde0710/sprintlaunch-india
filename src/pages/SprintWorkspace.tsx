@@ -33,7 +33,7 @@ import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { TeamChat } from "@/components/sprint/TeamChat";
 import { SprintRepository } from "@/components/sprint/SprintRepository";
-import { CodeWorkspace } from "@/components/sprint/CodeWorkspace";
+import { AIMentor } from "@/components/sprint/AIMentor";
 import {
   Rocket,
   ArrowLeft,
@@ -53,7 +53,6 @@ import {
   Video,
   MessageSquare,
   GitCommitHorizontal,
-  Code2,
 } from "lucide-react";
 
 interface Sprint {
