@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,18 +20,39 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  Plus,
   Trash2,
   Edit2,
   Save,
   X,
+  ArrowRight,
+  Clock,
+  Layout,
+  ListChecks,
+  GitBranch,
 } from "lucide-react";
 
+interface WeeklyPlan {
+  week: number;
+  title: string;
+  goals: string[];
+  focusAreas: string[];
+  dailyTasks: { day: number; tasks: string[] }[];
+}
+
+interface Dependency {
+  task: string;
+  dependsOn: string;
+  reason: string;
+}
+
 interface SprintPlan {
+  overview: string;
+  weeklyPlans: WeeklyPlan[];
   roles: { title: string; description: string; priority: string }[];
   phases: { name: string; startDay: number; endDay: number; description: string; deliverables: string[] }[];
   milestones: { title: string; day: number; description: string }[];
   deliverables: string[];
+  dependencies: Dependency[];
   riskFactors: string[];
 }
 
@@ -42,6 +63,7 @@ interface GeneratedTask {
   priority: string;
   estimatedHours: number;
   dueDay: number;
+  dependsOn: string;
   selected: boolean;
 }
 
@@ -68,7 +90,9 @@ export function AISprintPlanner({
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [savingTasks, setSavingTasks] = useState(false);
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(0);
   const [editingTask, setEditingTask] = useState<number | null>(null);
+  const [planView, setPlanView] = useState<string>("overview");
 
   const generatePlan = async () => {
     setLoadingPlan(true);
@@ -87,7 +111,7 @@ export function AISprintPlanner({
       if (data?.error) throw new Error(data.error);
 
       setPlan(data.plan);
-      toast({ title: "Sprint plan generated!", description: "Review the AI-generated plan below." });
+      toast({ title: "Sprint plan generated!", description: "Review the detailed plan below." });
     } catch (e: any) {
       toast({ title: "Failed to generate plan", description: e.message, variant: "destructive" });
     } finally {
@@ -113,7 +137,7 @@ export function AISprintPlanner({
       if (data?.error) throw new Error(data.error);
 
       setGeneratedTasks((data.tasks || []).map((t: any) => ({ ...t, selected: true })));
-      toast({ title: "Tasks generated!", description: "Review and confirm the tasks below." });
+      toast({ title: "Tasks generated!", description: "Review dependency-ordered tasks below." });
     } catch (e: any) {
       toast({ title: "Failed to generate tasks", description: e.message, variant: "destructive" });
     } finally {
@@ -140,7 +164,7 @@ export function AISprintPlanner({
         return {
           sprint_id: sprintId,
           title: t.title,
-          description: t.description,
+          description: `${t.description}${t.dependsOn ? `\n\n⚡ Depends on: ${t.dependsOn}` : ""}\n👤 Suggested: ${t.suggestedRole}`,
           priority: priorityMap[t.priority] || 2,
           hours_estimated: t.estimatedHours,
           due_date: dueDate.toISOString(),
@@ -206,7 +230,7 @@ export function AISprintPlanner({
             <div className="text-center py-6">
               <Sparkles className="w-12 h-12 text-primary mx-auto mb-4 opacity-60" />
               <p className="text-muted-foreground mb-4">
-                Let AI generate a structured sprint plan with roles, phases, milestones, and deliverables.
+                Generate a detailed, week-by-week sprint plan with dependency-aware task ordering.
               </p>
               <Button variant="founder" onClick={generatePlan} disabled={loadingPlan}>
                 {loadingPlan ? (
@@ -223,110 +247,256 @@ export function AISprintPlanner({
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Roles */}
-              <div>
-                <h3 className="font-semibold flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4" /> Required Roles
-                </h3>
-                <div className="grid gap-2">
-                  {plan.roles.map((role, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                      <div>
-                        <p className="font-medium text-sm">{role.title}</p>
-                        <p className="text-xs text-muted-foreground">{role.description}</p>
-                      </div>
-                      <Badge className={getPriorityColor(role.priority)}>{role.priority}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="space-y-4">
+              {/* Plan Navigation Tabs */}
+              <Tabs value={planView} onValueChange={setPlanView}>
+                <TabsList className="w-full justify-start flex-wrap h-auto gap-1">
+                  <TabsTrigger value="overview" className="text-xs">
+                    <Layout className="w-3 h-3 mr-1" /> Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="weekly" className="text-xs">
+                    <Calendar className="w-3 h-3 mr-1" /> Weekly Plan
+                  </TabsTrigger>
+                  <TabsTrigger value="roles" className="text-xs">
+                    <Users className="w-3 h-3 mr-1" /> Roles
+                  </TabsTrigger>
+                  <TabsTrigger value="dependencies" className="text-xs">
+                    <GitBranch className="w-3 h-3 mr-1" /> Dependencies
+                  </TabsTrigger>
+                  <TabsTrigger value="milestones" className="text-xs">
+                    <Target className="w-3 h-3 mr-1" /> Milestones
+                  </TabsTrigger>
+                  <TabsTrigger value="risks" className="text-xs">
+                    <AlertTriangle className="w-3 h-3 mr-1" /> Risks
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Phases */}
-              <div>
-                <h3 className="font-semibold flex items-center gap-2 mb-3">
-                  <Calendar className="w-4 h-4" /> Sprint Phases
-                </h3>
-                <div className="space-y-2">
-                  {plan.phases.map((phase, i) => (
-                    <div key={i} className="rounded-lg border border-border overflow-hidden">
+                {/* Overview */}
+                <TabsContent value="overview" className="space-y-4">
+                  {plan.overview && (
+                    <div className="p-4 rounded-xl bg-muted/50 border border-border">
+                      <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" /> Sprint Strategy
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{plan.overview}</p>
+                    </div>
+                  )}
+
+                  {/* Phases Overview */}
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2 mb-3">
+                      <Calendar className="w-4 h-4" /> Sprint Phases
+                    </h3>
+                    <div className="space-y-2">
+                      {plan.phases.map((phase, i) => (
+                        <div key={i} className="rounded-lg border border-border overflow-hidden">
+                          <button
+                            className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
+                            onClick={() => setExpandedPhase(expandedPhase === i ? null : i)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline" className="text-xs">
+                                Day {phase.startDay}-{phase.endDay}
+                              </Badge>
+                              <span className="font-medium text-sm">{phase.name}</span>
+                            </div>
+                            {expandedPhase === i ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                          <AnimatePresence>
+                            {expandedPhase === i && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="px-3 pb-3"
+                              >
+                                <p className="text-sm text-muted-foreground mb-2">{phase.description}</p>
+                                <div className="space-y-1">
+                                  {phase.deliverables.map((d, j) => (
+                                    <div key={j} className="flex items-center gap-2 text-xs">
+                                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                                      {d}
+                                    </div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Deliverables */}
+                  {plan.deliverables && plan.deliverables.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        <ListChecks className="w-4 h-4" /> Key Deliverables
+                      </h3>
+                      <div className="grid gap-2">
+                        {plan.deliverables.map((d, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm p-2 rounded-lg bg-muted/30">
+                            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Weekly Plan */}
+                <TabsContent value="weekly" className="space-y-3">
+                  {(plan.weeklyPlans || []).map((week, i) => (
+                    <div key={i} className="rounded-xl border border-border overflow-hidden">
                       <button
-                        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
-                        onClick={() => setExpandedPhase(expandedPhase === i ? null : i)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                        onClick={() => setExpandedWeek(expandedWeek === i ? null : i)}
                       >
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="text-xs">
-                            Day {phase.startDay}-{phase.endDay}
-                          </Badge>
-                          <span className="font-medium text-sm">{phase.name}</span>
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                            W{week.week}
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-sm">{week.title}</p>
+                            <p className="text-xs text-muted-foreground">{week.goals.length} goals • {week.focusAreas.length} focus areas</p>
+                          </div>
                         </div>
-                        {expandedPhase === i ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        {expandedWeek === i ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       <AnimatePresence>
-                        {expandedPhase === i && (
+                        {expandedWeek === i && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="px-3 pb-3"
+                            className="px-4 pb-4 space-y-4"
                           >
-                            <p className="text-sm text-muted-foreground mb-2">{phase.description}</p>
-                            <div className="space-y-1">
-                              {phase.deliverables.map((d, j) => (
-                                <div key={j} className="flex items-center gap-2 text-xs">
-                                  <CheckCircle2 className="w-3 h-3 text-primary" />
-                                  {d}
-                                </div>
-                              ))}
+                            {/* Goals */}
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Goals</p>
+                              <div className="space-y-1">
+                                {week.goals.map((g, j) => (
+                                  <div key={j} className="flex items-start gap-2 text-sm">
+                                    <Target className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                                    {g}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
+
+                            {/* Focus Areas */}
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Focus Areas</p>
+                              <div className="flex flex-wrap gap-2">
+                                {week.focusAreas.map((f, j) => (
+                                  <Badge key={j} variant="secondary" className="text-xs">{f}</Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Daily Tasks */}
+                            {week.dailyTasks && week.dailyTasks.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Day-by-Day</p>
+                                <div className="space-y-2">
+                                  {week.dailyTasks.map((dt, j) => (
+                                    <div key={j} className="flex gap-3">
+                                      <div className="w-12 shrink-0">
+                                        <Badge variant="outline" className="text-xs w-full justify-center">Day {dt.day}</Badge>
+                                      </div>
+                                      <div className="space-y-1 flex-1">
+                                        {dt.tasks.map((t, k) => (
+                                          <p key={k} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <ArrowRight className="w-3 h-3 mt-0.5 shrink-0 text-primary" />
+                                            {t}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
                   ))}
-                </div>
-              </div>
+                </TabsContent>
 
-              {/* Milestones */}
-              <div>
-                <h3 className="font-semibold flex items-center gap-2 mb-3">
-                  <Target className="w-4 h-4" /> Milestones
-                </h3>
-                <div className="relative">
-                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-                  {plan.milestones.map((m, i) => (
-                    <div key={i} className="relative pl-10 pb-4">
-                      <div className="absolute left-2.5 top-1 w-3 h-3 rounded-full bg-primary" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{m.title}</p>
-                          <Badge variant="outline" className="text-xs">Day {m.day}</Badge>
+                {/* Roles */}
+                <TabsContent value="roles">
+                  <div className="grid gap-2">
+                    {plan.roles.map((role, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                        <div>
+                          <p className="font-medium text-sm">{role.title}</p>
+                          <p className="text-xs text-muted-foreground">{role.description}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{m.description}</p>
+                        <Badge className={getPriorityColor(role.priority)}>{role.priority}</Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Risk Factors */}
-              {plan.riskFactors.length > 0 && (
-                <div>
-                  <h3 className="font-semibold flex items-center gap-2 mb-3">
-                    <AlertTriangle className="w-4 h-4 text-yellow-600" /> Risk Factors
-                  </h3>
-                  <div className="space-y-1">
-                    {plan.riskFactors.map((r, i) => (
-                      <p key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-yellow-600 mt-0.5">•</span> {r}
-                      </p>
                     ))}
                   </div>
-                </div>
-              )}
+                </TabsContent>
+
+                {/* Dependencies */}
+                <TabsContent value="dependencies">
+                  {(plan.dependencies || []).length === 0 ? (
+                    <p className="text-muted-foreground text-center py-6 text-sm">No dependencies defined.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {plan.dependencies.map((dep, i) => (
+                        <div key={i} className="p-3 rounded-xl border border-border bg-card">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Badge variant="outline" className="text-xs shrink-0">{dep.dependsOn}</Badge>
+                            <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+                            <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">{dep.task}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">{dep.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Milestones */}
+                <TabsContent value="milestones">
+                  <div className="relative">
+                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
+                    {plan.milestones.map((m, i) => (
+                      <div key={i} className="relative pl-10 pb-4">
+                        <div className="absolute left-2.5 top-1 w-3 h-3 rounded-full bg-primary" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{m.title}</p>
+                            <Badge variant="outline" className="text-xs">Day {m.day}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{m.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {/* Risks */}
+                <TabsContent value="risks">
+                  {plan.riskFactors.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-6 text-sm">No risk factors identified.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {plan.riskFactors.map((r, i) => (
+                        <p key={i} className="text-sm text-muted-foreground flex items-start gap-2 p-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5">
+                          <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" /> {r}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
 
               {/* Generate Tasks Button */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <Button variant="founder" onClick={generateTasks} disabled={loadingTasks}>
                   {loadingTasks ? (
                     <>
@@ -389,7 +559,7 @@ export function AISprintPlanner({
                       onChange={(e) => updateTask(i, { description: e.target.value })}
                       rows={2}
                     />
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <select
                         value={task.priority}
                         onChange={(e) => updateTask(i, { priority: e.target.value })}
@@ -432,8 +602,16 @@ export function AISprintPlanner({
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                         <Badge variant="outline" className="text-xs">{task.suggestedRole}</Badge>
-                        <Badge variant="secondary" className="text-xs">{task.estimatedHours}h</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          <Clock className="w-3 h-3 mr-1" />{task.estimatedHours}h
+                        </Badge>
                         <Badge variant="secondary" className="text-xs">Day {task.dueDay}</Badge>
+                        {task.dependsOn && (
+                          <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                            <GitBranch className="w-3 h-3 mr-1" />
+                            After: {task.dependsOn}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-1">

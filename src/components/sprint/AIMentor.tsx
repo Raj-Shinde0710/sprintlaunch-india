@@ -23,6 +23,7 @@ import {
   Users,
   Code2,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 interface AIMentorProps {
@@ -55,6 +56,15 @@ interface SprintData {
   sprintName: string;
 }
 
+const QUICK_QUESTIONS = [
+  { label: "Next Steps", question: "What should we do next? Give me step-by-step actionable advice." },
+  { label: "Check Risks", question: "What are the current risks in our sprint? How do we mitigate them?" },
+  { label: "Improve Product", question: "How can we improve our product? What features should we prioritize?" },
+  { label: "Team Issues", question: "Are there any team issues? Who needs help and what roles are missing?" },
+  { label: "Priority Tasks", question: "Which tasks are most critical right now and in what order should we complete them?" },
+  { label: "Sprint Status", question: "Give me a detailed status update on our sprint progress." },
+];
+
 export function AIMentor({ sprintId }: AIMentorProps) {
   const { user } = useAuth();
   const [analysis, setAnalysis] = useState<SprintAnalysis>({
@@ -84,24 +94,10 @@ export function AIMentor({ sprintId }: AIMentorProps) {
       { data: members },
       { data: commits },
     ] = await Promise.all([
-      supabase
-        .from("sprints")
-        .select("name, status, progress, end_date, duration_days")
-        .eq("id", sprintId)
-        .single(),
-      supabase
-        .from("tasks")
-        .select("status, assignee_id, title, priority")
-        .eq("sprint_id", sprintId),
-      supabase
-        .from("sprint_members")
-        .select("role, user_id, hours_logged, is_founder")
-        .eq("sprint_id", sprintId)
-        .is("left_at", null),
-      supabase
-        .from("code_commits")
-        .select("id")
-        .eq("sprint_id", sprintId),
+      supabase.from("sprints").select("name, status, progress, end_date, duration_days").eq("id", sprintId).single(),
+      supabase.from("tasks").select("status, assignee_id, title, priority").eq("sprint_id", sprintId),
+      supabase.from("sprint_members").select("role, user_id, hours_logged, is_founder").eq("sprint_id", sprintId).is("left_at", null),
+      supabase.from("code_commits").select("id").eq("sprint_id", sprintId),
     ]);
 
     if (!sprint) return null;
@@ -134,69 +130,69 @@ export function AIMentor({ sprintId }: AIMentorProps) {
     const risks: string[] = [];
     const improvements: string[] = [];
 
-    // Suggestions based on task status
-    if (data.todoTasks > data.completedTasks && data.totalTasks > 0) {
-      suggestions.push("Focus on completing pending tasks before adding new ones.");
-    }
-    if (data.inProgressTasks === 0 && data.todoTasks > 0) {
-      suggestions.push("No tasks are currently in progress. Start working on high-priority items.");
-    }
-    if (data.completedTasks > 0 && data.todoTasks > 0) {
-      suggestions.push(`You've completed ${data.completedTasks} tasks. Keep the momentum going with the remaining ${data.todoTasks} tasks.`);
-    }
+    // Detailed suggestions
     if (data.totalTasks === 0) {
-      suggestions.push("Create and assign tasks to get started with your sprint.");
-    }
-    if (data.totalCommits === 0 && data.status === "active") {
-      suggestions.push("No code commits yet. Start committing code to track progress.");
+      suggestions.push("🎯 Create and assign tasks to get started. Use the AI Sprint Planner to auto-generate a structured task list.");
+    } else {
+      if (data.todoTasks > data.completedTasks && data.totalTasks > 0) {
+        suggestions.push(`📋 ${data.todoTasks} tasks are pending vs ${data.completedTasks} completed. Focus on completing existing tasks before adding new ones.`);
+      }
+      if (data.inProgressTasks === 0 && data.todoTasks > 0) {
+        suggestions.push("⚡ No tasks are in progress. Pick up the highest-priority pending task and start working on it immediately.");
+      }
+      if (data.completedTasks > 0 && data.todoTasks > 0) {
+        suggestions.push(`✅ Great momentum! ${data.completedTasks} tasks done. Complete the remaining ${data.todoTasks} tasks to stay on track.`);
+      }
+      if (data.totalCommits === 0 && data.status === "active") {
+        suggestions.push("💻 No code commits yet. Start committing code to the repository to track development progress.");
+      }
+      if (data.daysRemaining <= 5 && data.todoTasks > 3) {
+        suggestions.push(`⏰ Only ${data.daysRemaining} days left with ${data.todoTasks} pending tasks. Prioritize critical tasks and consider reducing scope.`);
+      }
     }
 
-    // Risks
+    // Detailed risks
     const completionRate = data.totalTasks > 0 ? (data.completedTasks / data.totalTasks) * 100 : 0;
     if (data.daysRemaining <= 3 && completionRate < 50) {
-      risks.push(`⚠️ Only ${data.daysRemaining} days remaining with ${completionRate.toFixed(0)}% completion. Sprint is at risk.`);
+      risks.push(`🚨 Critical: Only ${data.daysRemaining} days remaining with ${completionRate.toFixed(0)}% completion. Sprint is at high risk of failure.`);
     }
     if (data.todoTasks > data.totalTasks * 0.7 && data.status === "active") {
-      risks.push("⚠️ More than 70% of tasks are still pending. Increase team velocity.");
+      risks.push(`⚠️ Over 70% of tasks (${data.todoTasks}/${data.totalTasks}) are still pending. Team velocity needs immediate improvement.`);
     }
     if (data.totalMembers < 2) {
-      risks.push("⚠️ Team is too small. Consider adding more members for better execution.");
+      risks.push("⚠️ Solo team detected. Consider adding members to distribute workload and avoid burnout.");
     }
     if (data.totalCommits === 0 && data.status === "active") {
-      risks.push("⚠️ No code activity detected. Development may be stalled.");
+      risks.push("⚠️ No code activity detected. Development may be stalled — verify team is actively working.");
     }
     if (data.status === "paused") {
-      risks.push("⚠️ Sprint is currently paused. Resume soon to avoid falling behind.");
+      risks.push("⚠️ Sprint is paused. Resume soon to avoid falling behind schedule.");
     }
 
     // Gap detection
     const roles = data.memberRoles.map((r) => r.toLowerCase());
-    const commonRoles = ["frontend", "backend", "designer", "ui/ux", "fullstack", "full stack", "developer"];
     const hasFrontend = roles.some((r) => r.includes("frontend") || r.includes("front-end") || r.includes("ui") || r.includes("fullstack"));
     const hasBackend = roles.some((r) => r.includes("backend") || r.includes("back-end") || r.includes("fullstack") || r.includes("server"));
     const hasDesigner = roles.some((r) => r.includes("design") || r.includes("ui/ux") || r.includes("ux"));
 
-    if (!hasFrontend) {
-      risks.push("⚠️ No frontend developer assigned. UI development may be blocked.");
-    }
-    if (!hasBackend) {
-      risks.push("⚠️ No backend developer assigned. API development may be blocked.");
-    }
+    if (!hasFrontend) risks.push("⚠️ No frontend developer assigned. UI development may be blocked.");
+    if (!hasBackend) risks.push("⚠️ No backend developer assigned. API and database work may be blocked.");
 
-    // Improvements
+    // Detailed improvements
     if (!hasDesigner) {
-      improvements.push("Consider adding a UI/UX designer to improve user experience.");
+      improvements.push("🎨 Add a UI/UX designer to improve user experience and create a polished product.");
     }
     if (data.totalCommits < data.completedTasks && data.completedTasks > 0) {
-      improvements.push("Commit code more frequently to maintain a clear development history.");
+      improvements.push("📝 Commit code more frequently — aim for at least one commit per completed task.");
     }
-    improvements.push("Set up regular team check-ins to maintain alignment and momentum.");
+    improvements.push("📅 Schedule daily 15-minute standups to keep everyone aligned and unblock issues quickly.");
     if (data.progress < 50 && data.daysRemaining > 5) {
-      improvements.push("Break down large tasks into smaller, actionable subtasks for faster delivery.");
+      improvements.push("🔨 Break large tasks into smaller subtasks (2-4 hours each) for faster delivery and clearer progress.");
     }
     if (data.totalMembers >= 3) {
-      improvements.push("Use peer reviews to maintain code quality and knowledge sharing.");
+      improvements.push("👥 Implement peer code reviews to maintain quality and share knowledge across the team.");
     }
+    improvements.push("📊 Use the AI Mentor chat to get personalized advice on priorities and blockers.");
 
     return { suggestions, risks, improvements };
   };
@@ -215,72 +211,13 @@ export function AIMentor({ sprintId }: AIMentorProps) {
     setLoading(false);
   };
 
-  const generateChatResponse = (question: string, data: SprintData): string => {
-    const q = question.toLowerCase();
-
-    if (q.includes("behind") || q.includes("delayed") || q.includes("slow") || q.includes("why")) {
-      const reasons: string[] = [];
-      if (data.todoTasks > data.completedTasks) {
-        reasons.push(`${data.todoTasks} tasks are still pending while only ${data.completedTasks} are completed`);
-      }
-      if (data.totalCommits < 3) {
-        reasons.push("very few code commits have been made");
-      }
-      if (data.totalMembers < 3) {
-        reasons.push("the team size is small for the workload");
-      }
-      return reasons.length > 0
-        ? `Based on your sprint data, here's why progress may be slow: ${reasons.join(", ")}. I recommend prioritizing critical tasks and ensuring all team members are actively contributing.`
-        : "Your sprint seems to be on track! Keep maintaining the current pace.";
-    }
-
-    if (q.includes("next") || q.includes("should") || q.includes("do")) {
-      if (data.totalTasks === 0) return "Start by creating tasks and assigning them to team members. Define clear deliverables for each task.";
-      if (data.todoTasks > 0 && data.inProgressTasks === 0) return "Pick up pending tasks and start working on them. Focus on high-priority items first.";
-      if (data.inProgressTasks > 0) return `You have ${data.inProgressTasks} task(s) in progress. Focus on completing those before starting new ones.`;
-      return "Great progress! Review completed tasks, clean up any loose ends, and prepare for the sprint demo.";
-    }
-
-    if (q.includes("improve") || q.includes("better") || q.includes("tips")) {
-      const tips = [
-        "Break large tasks into smaller, manageable subtasks.",
-        "Commit code frequently to maintain clear history.",
-        "Hold daily standups to keep everyone aligned.",
-        "Review and prioritize tasks at the start of each day.",
-      ];
-      return `Here are some tips to improve your sprint:\n\n${tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}`;
-    }
-
-    if (q.includes("progress") || q.includes("status") || q.includes("how")) {
-      return `Sprint "${data.sprintName}" is at ${data.progress}% progress. ${data.completedTasks}/${data.totalTasks} tasks completed, ${data.daysRemaining} days remaining, ${data.totalMembers} team members, and ${data.totalCommits} code commits.`;
-    }
-
-    if (q.includes("risk") || q.includes("problem") || q.includes("issue")) {
-      const risks = analysis.risks;
-      return risks.length > 0
-        ? `Here are the current risks:\n\n${risks.join("\n")}`
-        : "No major risks detected at the moment. Keep up the good work!";
-    }
-
-    if (q.includes("team") || q.includes("member") || q.includes("role")) {
-      const roles = data.memberRoles;
-      return `Your team has ${data.totalMembers} member(s) with roles: ${roles.join(", ")}. ${
-        data.totalMembers < 3 ? "Consider recruiting more members for better coverage." : "Team size looks good!"
-      }`;
-    }
-
-    // Default response
-    return `Based on your sprint data: ${data.progress}% complete, ${data.completedTasks}/${data.totalTasks} tasks done, ${data.daysRemaining} days remaining. ${
-      data.todoTasks > 0 ? `Focus on the ${data.todoTasks} pending task(s).` : "All tasks are in progress or completed!"
-    } Feel free to ask about risks, progress, team, or improvements.`;
-  };
-
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || !sprintData) return;
+  const handleSendMessage = async (messageText?: string) => {
+    const text = messageText || chatInput.trim();
+    if (!text || !sprintData) return;
 
     const userMessage: ChatMessage = {
       role: "user",
-      content: chatInput,
+      content: text,
       timestamp: new Date(),
     };
 
@@ -288,22 +225,64 @@ export function AIMentor({ sprintId }: AIMentorProps) {
     setChatInput("");
     setChatLoading(true);
 
-    // Simulate brief thinking time
-    await new Promise((r) => setTimeout(r, 500));
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-sprint-planner", {
+        body: {
+          action: "mentor_chat",
+          sprintId,
+          question: text,
+          chatHistory: chatMessages.slice(-6),
+        },
+      });
 
-    const aiResponse = generateChatResponse(chatInput, sprintData);
-    const aiMessage: ChatMessage = {
-      role: "ai",
-      content: aiResponse,
-      timestamp: new Date(),
-    };
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-    setChatMessages((prev) => [...prev, aiMessage]);
+      const aiMessage: ChatMessage = {
+        role: "ai",
+        content: data.response || "I couldn't generate a response. Please try again.",
+        timestamp: new Date(),
+      };
+
+      setChatMessages((prev) => [...prev, aiMessage]);
+    } catch (e: any) {
+      // Fallback to local response
+      const aiMessage: ChatMessage = {
+        role: "ai",
+        content: generateLocalResponse(text, sprintData),
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, aiMessage]);
+    }
+
     setChatLoading(false);
 
     if (user) {
-      await logSprintEvent(sprintId, "ai_mentor_chat", { question: chatInput.substring(0, 100) }, user.id);
+      await logSprintEvent(sprintId, "ai_mentor_chat", { question: text.substring(0, 100) }, user.id);
     }
+  };
+
+  const generateLocalResponse = (question: string, data: SprintData): string => {
+    const q = question.toLowerCase();
+
+    if (q.includes("behind") || q.includes("delayed") || q.includes("slow") || q.includes("why")) {
+      const reasons: string[] = [];
+      if (data.todoTasks > data.completedTasks) reasons.push(`• ${data.todoTasks} tasks pending vs ${data.completedTasks} completed`);
+      if (data.totalCommits < 3) reasons.push("• Very few code commits have been made");
+      if (data.totalMembers < 3) reasons.push("• Team size is small for the workload");
+      return reasons.length > 0
+        ? `Here's why progress may be slow:\n\n${reasons.join("\n")}\n\n**Next steps:** Prioritize high-priority tasks, ensure all team members are actively contributing, and commit code regularly.`
+        : "Your sprint seems on track! Keep the current pace.";
+    }
+
+    if (q.includes("next") || q.includes("should") || q.includes("do")) {
+      if (data.totalTasks === 0) return "**Step 1:** Create tasks using the AI Sprint Planner\n**Step 2:** Assign tasks to team members\n**Step 3:** Start with high-priority items";
+      if (data.todoTasks > 0 && data.inProgressTasks === 0) return "**Immediate action:** Pick up the highest-priority pending task and move it to 'In Progress'. Focus on one task at a time.";
+      if (data.inProgressTasks > 0) return `You have **${data.inProgressTasks} task(s) in progress**. Complete those before starting new ones. Check if any are blocked.`;
+      return "Great progress! Review completed work, prepare for the sprint demo, and document your learnings.";
+    }
+
+    return `Sprint "${data.sprintName}": **${data.progress}% complete** • ${data.completedTasks}/${data.totalTasks} tasks done • ${data.daysRemaining} days remaining • ${data.totalMembers} members • ${data.totalCommits} commits.\n\nAsk about risks, priorities, improvements, or team issues for detailed advice.`;
   };
 
   if (loading) {
@@ -329,13 +308,13 @@ export function AIMentor({ sprintId }: AIMentorProps) {
               <div>
                 <h2 className="text-xl font-bold font-display">AI Mentor</h2>
                 <p className="text-sm text-muted-foreground">
-                  Your intelligent sprint advisor
+                  Your intelligent sprint advisor — powered by AI
                 </p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={fetchAndAnalyze}>
               <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Analysis
+              Refresh
             </Button>
           </div>
 
@@ -364,8 +343,12 @@ export function AIMentor({ sprintId }: AIMentorProps) {
       </Card>
 
       {/* Tabbed Content */}
-      <Tabs defaultValue="suggestions" className="space-y-4">
+      <Tabs defaultValue="chat" className="space-y-4">
         <TabsList className="w-full justify-start">
+          <TabsTrigger value="chat">
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Chat
+          </TabsTrigger>
           <TabsTrigger value="suggestions">
             <Lightbulb className="w-4 h-4 mr-2" />
             Suggestions
@@ -373,16 +356,150 @@ export function AIMentor({ sprintId }: AIMentorProps) {
           <TabsTrigger value="risks">
             <AlertTriangle className="w-4 h-4 mr-2" />
             Risks
+            {analysis.risks.length > 0 && (
+              <Badge variant="destructive" className="ml-1.5 text-xs px-1.5 py-0">{analysis.risks.length}</Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="improvements">
             <TrendingUp className="w-4 h-4 mr-2" />
-            Improvements
-          </TabsTrigger>
-          <TabsTrigger value="chat">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Chat
+            Improve
           </TabsTrigger>
         </TabsList>
+
+        {/* Chat Tab (now default) */}
+        <TabsContent value="chat">
+          <Card className="flex flex-col" style={{ height: "520px" }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                Chat with AI Mentor
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col min-h-0">
+              {/* Quick Question Buttons */}
+              {chatMessages.length === 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-2">Quick questions:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {QUICK_QUESTIONS.map((q) => (
+                      <Button
+                        key={q.label}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => handleSendMessage(q.question)}
+                        disabled={chatLoading}
+                      >
+                        {q.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 pr-4 mb-3">
+                <div className="space-y-4">
+                  {chatMessages.length === 0 && (
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 p-3 rounded-xl bg-muted/50 max-w-[85%]">
+                        <p className="text-sm">
+                          Hi! I'm your AI Mentor. I analyze your sprint data in real-time to give you actionable advice. Ask me anything about your sprint — priorities, risks, next steps, or team issues.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {chatMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          msg.role === "user" ? "bg-builder/10" : "bg-primary/10"
+                        }`}
+                      >
+                        {msg.role === "user" ? (
+                          <User className="w-4 h-4 text-builder" />
+                        ) : (
+                          <Bot className="w-4 h-4 text-primary" />
+                        )}
+                      </div>
+                      <div
+                        className={`flex-1 p-3 rounded-xl max-w-[85%] ${
+                          msg.role === "user"
+                            ? "bg-builder/10 text-foreground ml-auto"
+                            : "bg-muted/50"
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {chatLoading && (
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="p-3 rounded-xl bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          <span className="text-xs text-muted-foreground">Analyzing sprint data...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={chatEndRef} />
+                </div>
+              </ScrollArea>
+
+              {/* Quick Actions (visible when chat has messages) */}
+              {chatMessages.length > 0 && (
+                <div className="flex gap-1.5 mb-2 flex-wrap">
+                  {QUICK_QUESTIONS.slice(0, 4).map((q) => (
+                    <Button
+                      key={q.label}
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => handleSendMessage(q.question)}
+                      disabled={chatLoading}
+                    >
+                      {q.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {/* Input */}
+              <div className="flex gap-2 pt-2 border-t border-border">
+                <Input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask about priorities, risks, next steps..."
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                  disabled={chatLoading}
+                />
+                <Button
+                  onClick={() => handleSendMessage()}
+                  disabled={!chatInput.trim() || chatLoading}
+                  size="icon"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Suggestions Tab */}
         <TabsContent value="suggestions">
@@ -467,124 +584,6 @@ export function AIMentor({ sprintId }: AIMentorProps) {
                     <p className="text-sm">{improvement}</p>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Chat Tab */}
-        <TabsContent value="chat">
-          <Card className="flex flex-col" style={{ height: "500px" }}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                Chat with AI Mentor
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col min-h-0">
-              {/* Messages */}
-              <ScrollArea className="flex-1 pr-4 mb-4">
-                <div className="space-y-4">
-                  {/* Welcome message */}
-                  {chatMessages.length === 0 && (
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bot className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="flex-1 p-3 rounded-xl bg-muted/50 max-w-[85%]">
-                        <p className="text-sm">
-                          Hi! I'm your AI Mentor. I can help you with sprint strategy, risk assessment, and next steps. Try asking:
-                        </p>
-                        <div className="mt-2 space-y-1">
-                          {[
-                            "What should we do next?",
-                            "Why are we behind?",
-                            "What are the risks?",
-                            "How can we improve?",
-                          ].map((q) => (
-                            <button
-                              key={q}
-                              onClick={() => {
-                                setChatInput(q);
-                              }}
-                              className="block text-xs text-primary hover:underline cursor-pointer"
-                            >
-                              "{q}"
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-                    >
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          msg.role === "user"
-                            ? "bg-builder/10"
-                            : "bg-primary/10"
-                        }`}
-                      >
-                        {msg.role === "user" ? (
-                          <User className="w-4 h-4 text-builder" />
-                        ) : (
-                          <Bot className="w-4 h-4 text-primary" />
-                        )}
-                      </div>
-                      <div
-                        className={`flex-1 p-3 rounded-xl max-w-[85%] ${
-                          msg.role === "user"
-                            ? "bg-builder/10 text-foreground ml-auto"
-                            : "bg-muted/50"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-
-                  {chatLoading && (
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bot className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="p-3 rounded-xl bg-muted/50">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
-                          <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
-                          <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={chatEndRef} />
-                </div>
-              </ScrollArea>
-
-              {/* Input */}
-              <div className="flex gap-2 pt-2 border-t border-border">
-                <Input
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask your AI Mentor a question..."
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                  disabled={chatLoading}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!chatInput.trim() || chatLoading}
-                  size="icon"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
