@@ -346,9 +346,9 @@ export default function SprintWorkspace() {
       case "demo":
         return <SprintDemoDay sprint={sprint} isFounder={isFounder} onUpdate={fetchSprintData} />;
       case "ranking":
-        return <BuilderRanking sprintId={sprint.id} />;
+        return <BuilderRanking ideaId={sprint.idea.id} />;
       case "pitch":
-        return <PitchGenerator sprintId={sprint.id} />;
+        return <PitchGenerator ideaId={sprint.idea.id} />;
       default:
         return null;
     }
