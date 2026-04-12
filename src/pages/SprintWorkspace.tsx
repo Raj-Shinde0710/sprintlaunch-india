@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +32,10 @@ import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { TeamChat } from "@/components/sprint/TeamChat";
 import { SprintRepository } from "@/components/sprint/SprintRepository";
 import { AIMentor } from "@/components/sprint/AIMentor";
+import { SprintWorkspaceSidebar } from "@/components/sprint/SprintWorkspaceSidebar";
+import { SprintSOPSection } from "@/components/sprint/SprintSOPSection";
+import { SprintAutomationSection } from "@/components/sprint/SprintAutomationSection";
+import { SprintFinanceSection } from "@/components/sprint/SprintFinanceSection";
 import {
   Rocket,
   ArrowLeft,
@@ -45,14 +47,6 @@ import {
   Play,
   Pause,
   Flag,
-  Brain,
-  ShieldCheck,
-  TrendingUp,
-  Calendar,
-  Activity,
-  Video,
-  MessageSquare,
-  GitCommitHorizontal,
 } from "lucide-react";
 
 interface Sprint {
@@ -103,7 +97,7 @@ interface SprintMember {
 export default function SprintWorkspace() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [sprint, setSprint] = useState<Sprint | null>(null);
@@ -113,33 +107,20 @@ export default function SprintWorkspace() {
   const [equityDistribution, setEquityDistribution] = useState<EquityDistribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState("dashboard");
 
   const isFounder = sprint?.idea.founder_id === user?.id;
   const isMember = members.some((m) => m.user_id === user?.id);
 
   useEffect(() => {
-    if (id) {
-      fetchSprintData();
-    }
+    if (id) fetchSprintData();
   }, [id]);
 
   const fetchSprintData = async () => {
     if (!id) return;
-
-    // Fetch sprint
     const { data: sprintData, error: sprintError } = await supabase
       .from("sprints")
-      .select(`
-        *,
-        idea:ideas (
-          id,
-          title,
-          founder_id,
-          pitch,
-          industry,
-          sprint_duration
-        )
-      `)
+      .select(`*, idea:ideas (id, title, founder_id, pitch, industry, sprint_duration)`)
       .eq("id", id)
       .single();
 
@@ -154,404 +135,160 @@ export default function SprintWorkspace() {
     setChecklist(getSprintChecklist(sprintData));
 
     const [{ data: membersData }, equity] = await Promise.all([
-      supabase
-        .from("sprint_members")
-        .select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder")
-        .eq("sprint_id", id)
-        .is("left_at", null),
+      supabase.from("sprint_members").select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder").eq("sprint_id", id).is("left_at", null),
       calculateEquityDistribution(id),
     ]);
 
     const memberRows = (membersData || []) as unknown as Omit<SprintMember, "profile">[];
-
     if (memberRows.length > 0) {
-      const userIds = memberRows.map((member) => member.user_id);
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, execution_score")
-        .in("id", userIds);
-
-      const profileById = new Map((profilesData || []).map((profile) => [profile.id, profile]));
-      const hydratedMembers = memberRows.map((member) => {
-        const profile = profileById.get(member.user_id);
-        return {
-          ...member,
-          profile: profile
-            ? {
-                full_name: profile.full_name,
-                avatar_url: profile.avatar_url,
-                execution_score: profile.execution_score,
-              }
-            : null,
-        };
-      });
-
-      setMembers(hydratedMembers);
+      const userIds = memberRows.map((m) => m.user_id);
+      const { data: profilesData } = await supabase.from("profiles").select("id, full_name, avatar_url, execution_score").in("id", userIds);
+      const profileById = new Map((profilesData || []).map((p) => [p.id, p]));
+      setMembers(memberRows.map((m) => ({
+        ...m,
+        profile: profileById.get(m.user_id) ? {
+          full_name: profileById.get(m.user_id)!.full_name,
+          avatar_url: profileById.get(m.user_id)!.avatar_url,
+          execution_score: profileById.get(m.user_id)!.execution_score,
+        } : null,
+      })));
     } else {
       setMembers([]);
     }
 
     setEquityDistribution(equity);
-
     setLoading(false);
   };
 
   const handleActivateSprint = async () => {
     if (!sprint) return;
     setActionLoading(true);
-
     const result = await activateSprint(sprint.id);
-
     if (result.success) {
-      toast({ title: "Sprint activated!", description: "The sprint is now live." });
+      toast({ title: "Sprint activated!" });
       fetchSprintData();
     } else {
       toast({ title: "Failed to activate", description: result.error, variant: "destructive" });
     }
-
     setActionLoading(false);
   };
 
   const handleCompleteSprint = async () => {
     if (!sprint) return;
     setActionLoading(true);
-
     const result = await completeSprint(sprint.id);
-
     if (result.success) {
-      toast({ title: "Sprint completed!", description: "Congratulations on finishing your sprint!" });
+      toast({ title: "Sprint completed!" });
       fetchSprintData();
     } else {
       toast({ title: "Failed to complete", description: result.error, variant: "destructive" });
     }
-
     setActionLoading(false);
   };
 
   const handlePauseSprint = async () => {
     if (!sprint) return;
     setActionLoading(true);
-
-    const { error } = await supabase
-      .from("sprints")
-      .update({ status: "paused" })
-      .eq("id", sprint.id);
-
+    const { error } = await supabase.from("sprints").update({ status: "paused" }).eq("id", sprint.id);
     if (!error) {
       await logSprintEvent(sprint.id, "sprint_paused", {}, user?.id);
       toast({ title: "Sprint paused" });
       fetchSprintData();
     }
-
     setActionLoading(false);
   };
 
   const handleResumeSprint = async () => {
     if (!sprint) return;
     setActionLoading(true);
-
-    const { error } = await supabase
-      .from("sprints")
-      .update({ status: "active", last_activity_at: new Date().toISOString(), inactivity_warning_at: null })
-      .eq("id", sprint.id);
-
+    const { error } = await supabase.from("sprints").update({ status: "active", last_activity_at: new Date().toISOString(), inactivity_warning_at: null }).eq("id", sprint.id);
     if (!error) {
       await logSprintEvent(sprint.id, "sprint_resumed", {}, user?.id);
       toast({ title: "Sprint resumed" });
       fetchSprintData();
     }
-
     setActionLoading(false);
   };
 
   if (loading || !sprint) {
     return (
-      <main className="min-h-screen bg-background">
-        <Navbar />
-        <div className="pt-24 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-founder"></div>
-        </div>
-      </main>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-founder"></div>
+      </div>
     );
   }
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-green-500/10 text-green-600";
-      case "paused":
-        return "bg-yellow-500/10 text-yellow-600";
-      case "completed":
-        return "bg-blue-500/10 text-blue-600";
-      case "failed":
-        return "bg-red-500/10 text-red-600";
-      default:
-        return "bg-muted text-muted-foreground";
+      case "active": return "bg-green-500/10 text-green-600";
+      case "paused": return "bg-yellow-500/10 text-yellow-600";
+      case "completed": return "bg-blue-500/10 text-blue-600";
+      case "failed": return "bg-red-500/10 text-red-600";
+      default: return "bg-muted text-muted-foreground";
     }
   };
 
-  const equityByUserId = new Map(
-    equityDistribution.map((entry) => [entry.userId, entry])
-  );
+  const equityByUserId = new Map(equityDistribution.map((e) => [e.userId, e]));
 
-  return (
-    <main className="min-h-screen bg-background">
-      <Navbar />
-
-      <div className="container mx-auto px-4 py-8 pt-24">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold font-display">{sprint.name}</h1>
-                <Badge className={getStatusBadgeColor(sprint.status)}>
-                  {sprint.status}
-                </Badge>
-              </div>
-              <Link
-                to={`/idea/${sprint.idea.id}`}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {sprint.idea.title}
-              </Link>
-            </div>
-          </div>
-
-          {isFounder && (
-            <div className="flex gap-3">
-              {sprint.status === "draft" && (
-                <Button
-                  variant="founder"
-                  onClick={handleActivateSprint}
-                  disabled={actionLoading || members.length < 2}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Start Sprint
-                </Button>
-              )}
-              {sprint.status === "active" && (
-                <>
-                  <Button variant="outline" onClick={handlePauseSprint} disabled={actionLoading}>
-                    <Pause className="w-4 h-4 mr-2" />
-                    Pause
-                  </Button>
-                  <Button variant="founder" onClick={handleCompleteSprint} disabled={actionLoading}>
-                    <Flag className="w-4 h-4 mr-2" />
-                    Complete Sprint
-                  </Button>
-                </>
-              )}
-              {sprint.status === "paused" && (
-                <Button variant="founder" onClick={handleResumeSprint} disabled={actionLoading}>
-                  <Play className="w-4 h-4 mr-2" />
-                  Resume Sprint
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Inactivity Warning */}
-        {health?.status === "critical" && sprint.status === "active" && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-xl border-2 border-red-500/50 bg-red-500/5"
-          >
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
-              <div>
-                <h3 className="font-semibold text-red-600">Inactivity Warning</h3>
-                <p className="text-sm text-muted-foreground">{health.message}</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Progress</p>
-                  <p className="text-3xl font-bold">{sprint.progress}%</p>
+  const renderContent = () => {
+    switch (activeSection) {
+      case "dashboard":
+        return (
+          <div className="space-y-6">
+            {/* Inactivity Warning */}
+            {health?.status === "critical" && sprint.status === "active" && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl border-2 border-red-500/50 bg-red-500/5">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                  <div>
+                    <h3 className="font-semibold text-red-600">Inactivity Warning</h3>
+                    <p className="text-sm text-muted-foreground">{health.message}</p>
+                  </div>
                 </div>
-                <div className="p-3 rounded-xl bg-founder/10">
-                  <Target className="w-6 h-6 text-founder" />
-                </div>
-              </div>
-              <Progress value={sprint.progress} className="mt-3 h-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Days Remaining</p>
-                  <p className="text-3xl font-bold">{health?.daysRemaining || 0}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-muted">
-                  <Clock className="w-6 h-6 text-foreground" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Team Size</p>
-                  <p className="text-3xl font-bold">{members.length}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-muted">
-                  <Users className="w-6 h-6 text-foreground" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Sprint Risk</p>
-              </div>
-              <RiskIndicator sprintId={sprint.id} compact />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <Tabs defaultValue="tasks" className="space-y-6">
-          <TabsList className="flex flex-wrap w-full lg:w-auto lg:inline-flex gap-1">
-            <TabsTrigger value="tasks">
-              <Target className="w-4 h-4 mr-2" />Tasks
-            </TabsTrigger>
-            {isFounder && (
-              <TabsTrigger value="ai-planner">
-                <Brain className="w-4 h-4 mr-2" />AI Planner
-              </TabsTrigger>
+              </motion.div>
             )}
-            <TabsTrigger value="gaps">
-              <ShieldCheck className="w-4 h-4 mr-2" />Gaps
-            </TabsTrigger>
-            <TabsTrigger value="risk">
-              <ShieldCheck className="w-4 h-4 mr-2" />Risk
-            </TabsTrigger>
-            <TabsTrigger value="report">
-              <Activity className="w-4 h-4 mr-2" />Report
-            </TabsTrigger>
-            <TabsTrigger value="team">
-              <Users className="w-4 h-4 mr-2" />Team
-            </TabsTrigger>
-            <TabsTrigger value="equity">
-              <TrendingUp className="w-4 h-4 mr-2" />Equity
-            </TabsTrigger>
-            <TabsTrigger value="timeline">
-              <Activity className="w-4 h-4 mr-2" />Timeline
-            </TabsTrigger>
-            {sprint.status === "completed" && (
-              <TabsTrigger value="demo">
-                <Video className="w-4 h-4 mr-2" />Demo Day
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="mentor">
-              <Brain className="w-4 h-4 mr-2" />AI Mentor
-            </TabsTrigger>
-            <TabsTrigger value="repo">
-              <GitCommitHorizontal className="w-4 h-4 mr-2" />Repository
-            </TabsTrigger>
-            <TabsTrigger value="chat">
-              <MessageSquare className="w-4 h-4 mr-2" />Chat
-            </TabsTrigger>
-          </TabsList>
 
-          <TabsContent value="tasks">
-            <SprintTaskBoard
-              sprintId={sprint.id}
-              isFounder={isFounder}
-              isMember={isMember}
-              sprintStatus={sprint.status}
-              onProgressUpdate={fetchSprintData}
-            />
-          </TabsContent>
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Progress</p><p className="text-3xl font-bold">{sprint.progress}%</p></div><div className="p-3 rounded-xl bg-founder/10"><Target className="w-6 h-6 text-founder" /></div></div><Progress value={sprint.progress} className="mt-3 h-2" /></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Days Remaining</p><p className="text-3xl font-bold">{health?.daysRemaining || 0}</p></div><div className="p-3 rounded-xl bg-muted"><Clock className="w-6 h-6 text-foreground" /></div></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Team Size</p><p className="text-3xl font-bold">{members.length}</p></div><div className="p-3 rounded-xl bg-muted"><Users className="w-6 h-6 text-foreground" /></div></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between mb-2"><p className="text-sm text-muted-foreground">Sprint Risk</p></div><RiskIndicator sprintId={sprint.id} compact /></CardContent></Card>
+            </div>
 
-          {isFounder && (
-            <TabsContent value="ai-planner">
-              <AISprintPlanner
-                sprintId={sprint.id}
-                ideaDescription={sprint.idea.pitch || sprint.idea.title}
-                industry={sprint.idea.industry || []}
-                sprintDuration={sprint.duration_days}
-                onTasksCreated={fetchSprintData}
-              />
-            </TabsContent>
-          )}
+            {/* Execution Gaps & Weekly Report */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ExecutionGaps sprintId={sprint.id} />
+              <WeeklyReport sprintId={sprint.id} />
+            </div>
 
-          <TabsContent value="gaps">
-            <ExecutionGaps sprintId={sprint.id} />
-          </TabsContent>
-
-          <TabsContent value="risk">
-            <RiskIndicator sprintId={sprint.id} />
-          </TabsContent>
-
-          <TabsContent value="report">
-            <WeeklyReport sprintId={sprint.id} />
-          </TabsContent>
-
-          <TabsContent value="team">
+            {/* Team */}
             <Card>
-              <CardHeader>
-                <CardTitle>Team Members</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold mb-4">Team Members</h3>
                 {members.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No sprint members yet.
-                  </p>
+                  <p className="text-center text-muted-foreground py-4">No members yet.</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {members.map((member) => {
-                      const memberEquity = equityByUserId.get(member.user_id);
-
+                      const eq = equityByUserId.get(member.user_id);
                       return (
-                        <div
-                          key={member.id}
-                          className="flex items-center justify-between p-4 rounded-xl border border-border"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                              <Users className="w-6 h-6 text-muted-foreground" />
+                        <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                              <Users className="w-5 h-5 text-muted-foreground" />
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <p className="font-medium">
-                                  {member.profile?.full_name || "Anonymous"}
-                                </p>
-                                {member.is_founder && (
-                                  <Badge className="bg-founder/10 text-founder text-xs">
-                                    Founder
-                                  </Badge>
-                                )}
+                                <p className="font-medium text-sm">{member.profile?.full_name || "Anonymous"}</p>
+                                {member.is_founder && <Badge className="bg-founder/10 text-founder text-xs">Founder</Badge>}
                               </div>
-                              <p className="text-sm text-muted-foreground">{member.role}</p>
+                              <p className="text-xs text-muted-foreground">{member.role}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium">{(memberEquity?.equityShare || 0).toFixed(2)}% equity</p>
-                            <p className="text-sm text-muted-foreground">
-                              {memberEquity?.tasksCompleted || 0} tasks · {memberEquity?.hoursLogged || 0}h logged
-                            </p>
-                            <Badge variant="outline" className="mt-1 text-xs">
-                              Score: {member.profile?.execution_score || 50}
-                            </Badge>
+                          <div className="text-right text-sm">
+                            <p className="font-medium">{(eq?.equityShare || 0).toFixed(1)}%</p>
+                            <p className="text-xs text-muted-foreground">Score: {member.profile?.execution_score || 50}</p>
                           </div>
                         </div>
                       );
@@ -562,85 +299,120 @@ export default function SprintWorkspace() {
             </Card>
 
             {/* Checklist */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Sprint Checklist</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold mb-4">Sprint Checklist</h3>
+                <div className="space-y-2">
                   {[
                     { key: "teamFormed", label: "Team formed (min 2 members)" },
                     { key: "goalsSet", label: "Sprint goals defined" },
                     { key: "tasksAssigned", label: "Tasks assigned" },
-                    { key: "midReviewDone", label: "Mid-sprint review completed" },
+                    { key: "midReviewDone", label: "Mid-sprint review" },
                     { key: "deliverablesSubmitted", label: "Deliverables submitted" },
                     { key: "sprintCompleted", label: "Sprint completed" },
                   ].map((item) => (
-                    <div
-                      key={item.key}
-                      className={`flex items-center gap-3 p-3 rounded-lg ${
-                        checklist?.[item.key as keyof SprintChecklistType]
-                          ? "bg-green-500/5"
-                          : "bg-muted/30"
-                      }`}
-                    >
-                      {checklist?.[item.key as keyof SprintChecklistType] ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
-                      )}
-                      <span
-                        className={
-                          checklist?.[item.key as keyof SprintChecklistType]
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {item.label}
-                      </span>
+                    <div key={item.key} className={`flex items-center gap-3 p-2.5 rounded-lg ${checklist?.[item.key as keyof SprintChecklistType] ? "bg-green-500/5" : "bg-muted/30"}`}>
+                      {checklist?.[item.key as keyof SprintChecklistType] ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30" />}
+                      <span className={`text-sm ${checklist?.[item.key as keyof SprintChecklistType] ? "" : "text-muted-foreground"}`}>{item.label}</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+        );
+      case "planner":
+        return <AISprintPlanner sprintId={sprint.id} ideaDescription={sprint.idea.pitch || sprint.idea.title} industry={sprint.idea.industry || []} sprintDuration={sprint.duration_days} onTasksCreated={fetchSprintData} />;
+      case "mentor":
+        return <AIMentor sprintId={sprint.id} />;
+      case "tasks":
+        return <SprintTaskBoard sprintId={sprint.id} isFounder={isFounder} isMember={isMember} sprintStatus={sprint.status} onProgressUpdate={fetchSprintData} />;
+      case "timeline":
+        return <SprintTimeline sprintId={sprint.id} />;
+      case "repository":
+        return <SprintRepository sprintId={sprint.id} />;
+      case "sop":
+        return <SprintSOPSection ideaPitch={sprint.idea.pitch} ideaTitle={sprint.idea.title} />;
+      case "automation":
+        return <SprintAutomationSection sprintId={sprint.id} />;
+      case "finance":
+        return <SprintFinanceSection />;
+      case "equity":
+        return <EquityChart distribution={equityDistribution} sprintId={sprint.id} isFounder={isFounder} sprintStatus={sprint.status} />;
+      case "chat":
+        return <TeamChat sprintId={sprint.id} />;
+      case "risk":
+        return <RiskIndicator sprintId={sprint.id} />;
+      case "demo":
+        return <SprintDemoDay sprint={sprint} isFounder={isFounder} onUpdate={fetchSprintData} />;
+      case "ranking":
+        return <BuilderRanking sprintId={sprint.id} />;
+      case "pitch":
+        return <PitchGenerator sprintId={sprint.id} />;
+      default:
+        return null;
+    }
+  };
 
-          <TabsContent value="equity">
-            <EquityChart
-              distribution={equityDistribution}
-              sprintId={sprint.id}
-              isFounder={isFounder}
-              sprintStatus={sprint.status}
-            />
-          </TabsContent>
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Sprint Internal Sidebar */}
+      <SprintWorkspaceSidebar
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        isFounder={isFounder}
+        sprintStatus={sprint.status}
+      />
 
-          <TabsContent value="timeline">
-            <SprintTimeline sprintId={sprint.id} />
-          </TabsContent>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="h-14 flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-6 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold truncate">{sprint.name}</h1>
+                <Badge className={`${getStatusColor(sprint.status)} text-xs`}>{sprint.status}</Badge>
+              </div>
+              <Link to={`/idea/${sprint.idea.id}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                {sprint.idea.title}
+              </Link>
+            </div>
+          </div>
 
-          {sprint.status === "completed" && (
-            <TabsContent value="demo">
-              <SprintDemoDay
-                sprint={sprint}
-                isFounder={isFounder}
-                onUpdate={fetchSprintData}
-              />
-            </TabsContent>
+          {isFounder && (
+            <div className="flex gap-2">
+              {sprint.status === "draft" && (
+                <Button size="sm" variant="default" onClick={handleActivateSprint} disabled={actionLoading || members.length < 2}>
+                  <Play className="w-3 h-3 mr-1" /> Start
+                </Button>
+              )}
+              {sprint.status === "active" && (
+                <>
+                  <Button size="sm" variant="outline" onClick={handlePauseSprint} disabled={actionLoading}>
+                    <Pause className="w-3 h-3 mr-1" /> Pause
+                  </Button>
+                  <Button size="sm" variant="default" onClick={handleCompleteSprint} disabled={actionLoading}>
+                    <Flag className="w-3 h-3 mr-1" /> Complete
+                  </Button>
+                </>
+              )}
+              {sprint.status === "paused" && (
+                <Button size="sm" variant="default" onClick={handleResumeSprint} disabled={actionLoading}>
+                  <Play className="w-3 h-3 mr-1" /> Resume
+                </Button>
+              )}
+            </div>
           )}
+        </header>
 
-          <TabsContent value="mentor">
-            <AIMentor sprintId={sprint.id} />
-          </TabsContent>
-
-          <TabsContent value="repo">
-            <SprintRepository sprintId={sprint.id} />
-          </TabsContent>
-
-          <TabsContent value="chat">
-            <TeamChat sprintId={sprint.id} />
-          </TabsContent>
-        </Tabs>
+        <main className="flex-1 overflow-auto p-6">
+          {renderContent()}
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
