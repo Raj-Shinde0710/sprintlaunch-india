@@ -16,16 +16,7 @@ import BackerInvestmentDashboard from "./pages/BackerInvestmentDashboard";
 import EquityCalculator from "./pages/EquityCalculator";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import SuccessStories from "./pages/SuccessStories";
-import Tasks from "./pages/Tasks";
-import Repository from "./pages/Repository";
-import Timeline from "./pages/Timeline";
-import AIMentorPage from "./pages/AIMentorPage";
-import TrialRoom from "./pages/TrialRoom";
-import SOPPlaybook from "./pages/SOPPlaybook";
-import Automation from "./pages/Automation";
-import Validation from "./pages/Validation";
-import Finance from "./pages/Finance";
-import InvestorTracker from "./pages/InvestorTracker";
+import BackersWorkspace from "./pages/BackersWorkspace";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,19 +41,10 @@ const App = () => (
             <Route path="/sprint/:id" element={<SprintWorkspace />} />
             <Route path="/builder-workspace/:id" element={<BuilderWorkspace />} />
             <Route path="/backer-dashboard/:id" element={<BackerInvestmentDashboard />} />
+            <Route path="/backers" element={<BackersWorkspace />} />
             <Route path="/equity-calculator" element={<EquityCalculator />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/success-stories" element={<SuccessStories />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/repository" element={<Repository />} />
-            <Route path="/timeline" element={<Timeline />} />
-            <Route path="/ai-mentor" element={<AIMentorPage />} />
-            <Route path="/trial-room" element={<TrialRoom />} />
-            <Route path="/sop" element={<SOPPlaybook />} />
-            <Route path="/automation" element={<Automation />} />
-            <Route path="/validation" element={<Validation />} />
-            <Route path="/finance" element={<Finance />} />
-            <Route path="/investor-tracker" element={<InvestorTracker />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
