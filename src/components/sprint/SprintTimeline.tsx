@@ -61,6 +61,27 @@ export function SprintTimeline({ sprintId }: SprintTimelineProps) {
 
   useEffect(() => {
     fetchTimeline();
+
+    // Realtime subscription for timeline updates
+    const channel = supabase
+      .channel(`timeline-${sprintId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "sprint_timeline",
+          filter: `sprint_id=eq.${sprintId}`,
+        },
+        () => {
+          fetchTimeline();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [sprintId]);
 
   const fetchTimeline = async () => {

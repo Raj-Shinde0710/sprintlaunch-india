@@ -94,6 +94,27 @@ export function SprintTaskBoard({
   useEffect(() => {
     fetchTasks();
     fetchMembers();
+
+    // Realtime subscription for task updates
+    const channel = supabase
+      .channel(`tasks-${sprintId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tasks",
+          filter: `sprint_id=eq.${sprintId}`,
+        },
+        () => {
+          fetchTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [sprintId]);
 
   const fetchTasks = async () => {
