@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_chat_messages: {
+        Row: {
+          content: string
+          context_metadata: Json | null
+          created_at: string
+          id: string
+          role: string
+          sprint_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          context_metadata?: Json | null
+          created_at?: string
+          id?: string
+          role?: string
+          sprint_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          context_metadata?: Json | null
+          created_at?: string
+          id?: string
+          role?: string
+          sprint_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_commits: {
         Row: {
           code_content: string
