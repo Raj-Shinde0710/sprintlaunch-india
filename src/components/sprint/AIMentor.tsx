@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,20 +18,20 @@ import {
   Bot,
   User,
   RefreshCw,
-  Zap,
   Target,
   Users,
   Code2,
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface AIMentorProps {
   sprintId: string;
 }
 
 interface ChatMessage {
-  role: "user" | "ai";
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
@@ -65,6 +65,8 @@ const QUICK_QUESTIONS = [
   { label: "Sprint Status", question: "Give me a detailed status update on our sprint progress." },
 ];
 
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-mentor-chat`;
+
 export function AIMentor({ sprintId }: AIMentorProps) {
   const { user } = useAuth();
   const [analysis, setAnalysis] = useState<SprintAnalysis>({
@@ -78,14 +80,47 @@ export function AIMentor({ sprintId }: AIMentorProps) {
   const [chatLoading, setChatLoading] = useState(false);
   const [sprintData, setSprintData] = useState<SprintData | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetchAndAnalyze();
+    loadChatHistory();
   }, [sprintId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  const loadChatHistory = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("ai_chat_messages")
+      .select("role, content, created_at")
+      .eq("sprint_id", sprintId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(50);
+
+    if (data && data.length > 0) {
+      setChatMessages(
+        data.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          timestamp: new Date(m.created_at),
+        }))
+      );
+    }
+  };
+
+  const persistMessage = async (role: string, content: string) => {
+    if (!user) return;
+    await supabase.from("ai_chat_messages").insert({
+      sprint_id: sprintId,
+      user_id: user.id,
+      role,
+      content,
+    });
+  };
 
   const fetchSprintData = async (): Promise<SprintData | null> => {
     const [
@@ -130,7 +165,6 @@ export function AIMentor({ sprintId }: AIMentorProps) {
     const risks: string[] = [];
     const improvements: string[] = [];
 
-    // Detailed suggestions
     if (data.totalTasks === 0) {
       suggestions.push("🎯 Create and assign tasks to get started. Use the AI Sprint Planner to auto-generate a structured task list.");
     } else {
@@ -151,7 +185,6 @@ export function AIMentor({ sprintId }: AIMentorProps) {
       }
     }
 
-    // Detailed risks
     const completionRate = data.totalTasks > 0 ? (data.completedTasks / data.totalTasks) * 100 : 0;
     if (data.daysRemaining <= 3 && completionRate < 50) {
       risks.push(`🚨 Critical: Only ${data.daysRemaining} days remaining with ${completionRate.toFixed(0)}% completion. Sprint is at high risk of failure.`);
@@ -163,36 +196,24 @@ export function AIMentor({ sprintId }: AIMentorProps) {
       risks.push("⚠️ Solo team detected. Consider adding members to distribute workload and avoid burnout.");
     }
     if (data.totalCommits === 0 && data.status === "active") {
-      risks.push("⚠️ No code activity detected. Development may be stalled — verify team is actively working.");
-    }
-    if (data.status === "paused") {
-      risks.push("⚠️ Sprint is paused. Resume soon to avoid falling behind schedule.");
+      risks.push("⚠️ No code activity detected. Development may be stalled.");
     }
 
-    // Gap detection
     const roles = data.memberRoles.map((r) => r.toLowerCase());
-    const hasFrontend = roles.some((r) => r.includes("frontend") || r.includes("front-end") || r.includes("ui") || r.includes("fullstack"));
-    const hasBackend = roles.some((r) => r.includes("backend") || r.includes("back-end") || r.includes("fullstack") || r.includes("server"));
+    const hasFrontend = roles.some((r) => r.includes("frontend") || r.includes("ui") || r.includes("fullstack"));
+    const hasBackend = roles.some((r) => r.includes("backend") || r.includes("fullstack") || r.includes("server"));
+    if (!hasFrontend) risks.push("⚠️ No frontend developer assigned.");
+    if (!hasBackend) risks.push("⚠️ No backend developer assigned.");
+
     const hasDesigner = roles.some((r) => r.includes("design") || r.includes("ui/ux") || r.includes("ux"));
-
-    if (!hasFrontend) risks.push("⚠️ No frontend developer assigned. UI development may be blocked.");
-    if (!hasBackend) risks.push("⚠️ No backend developer assigned. API and database work may be blocked.");
-
-    // Detailed improvements
-    if (!hasDesigner) {
-      improvements.push("🎨 Add a UI/UX designer to improve user experience and create a polished product.");
-    }
+    if (!hasDesigner) improvements.push("🎨 Add a UI/UX designer to improve user experience.");
     if (data.totalCommits < data.completedTasks && data.completedTasks > 0) {
       improvements.push("📝 Commit code more frequently — aim for at least one commit per completed task.");
     }
-    improvements.push("📅 Schedule daily 15-minute standups to keep everyone aligned and unblock issues quickly.");
+    improvements.push("📅 Schedule daily 15-minute standups to keep everyone aligned.");
     if (data.progress < 50 && data.daysRemaining > 5) {
-      improvements.push("🔨 Break large tasks into smaller subtasks (2-4 hours each) for faster delivery and clearer progress.");
+      improvements.push("🔨 Break large tasks into smaller subtasks (2-4 hours each) for faster delivery.");
     }
-    if (data.totalMembers >= 3) {
-      improvements.push("👥 Implement peer code reviews to maintain quality and share knowledge across the team.");
-    }
-    improvements.push("📊 Use the AI Mentor chat to get personalized advice on priorities and blockers.");
 
     return { suggestions, risks, improvements };
   };
@@ -203,17 +224,124 @@ export function AIMentor({ sprintId }: AIMentorProps) {
     if (data) {
       setSprintData(data);
       setAnalysis(analyzeSprintData(data));
-
-      if (user) {
-        await logSprintEvent(sprintId, "ai_mentor_analysis", {}, user.id);
-      }
     }
     setLoading(false);
   };
 
+  const streamChat = useCallback(async (allMessages: ChatMessage[]) => {
+    if (!user) return;
+
+    abortRef.current = new AbortController();
+
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          sprintId,
+          userId: user.id,
+          messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Error ${resp.status}`);
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let assistantSoFar = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantSoFar += content;
+              setChatMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant") {
+                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+                }
+                return [...prev, { role: "assistant", content: assistantSoFar, timestamp: new Date() }];
+              });
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Final flush
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split("\n")) {
+          if (!raw) continue;
+          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+          if (raw.startsWith(":") || raw.trim() === "") continue;
+          if (!raw.startsWith("data: ")) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantSoFar += content;
+              setChatMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant") {
+                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+                }
+                return [...prev, { role: "assistant", content: assistantSoFar, timestamp: new Date() }];
+              });
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      // Persist assistant message
+      if (assistantSoFar) {
+        await persistMessage("assistant", assistantSoFar);
+      }
+
+      return assistantSoFar;
+    } catch (e: any) {
+      if (e.name === "AbortError") return;
+      throw e;
+    }
+  }, [sprintId, user]);
+
   const handleSendMessage = async (messageText?: string) => {
     const text = messageText || chatInput.trim();
-    if (!text || !sprintData) return;
+    if (!text || chatLoading) return;
 
     const userMessage: ChatMessage = {
       role: "user",
@@ -221,38 +349,25 @@ export function AIMentor({ sprintId }: AIMentorProps) {
       timestamp: new Date(),
     };
 
-    setChatMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...chatMessages, userMessage];
+    setChatMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
 
+    // Persist user message
+    await persistMessage("user", text);
+
     try {
-      const { data, error } = await supabase.functions.invoke("ai-sprint-planner", {
-        body: {
-          action: "mentor_chat",
-          sprintId,
-          question: text,
-          chatHistory: chatMessages.slice(-6),
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const aiMessage: ChatMessage = {
-        role: "ai",
-        content: data.response || "I couldn't generate a response. Please try again.",
-        timestamp: new Date(),
-      };
-
-      setChatMessages((prev) => [...prev, aiMessage]);
+      await streamChat(newMessages);
     } catch (e: any) {
+      console.error("AI Mentor error:", e);
       // Fallback to local response
-      const aiMessage: ChatMessage = {
-        role: "ai",
-        content: generateLocalResponse(text, sprintData),
-        timestamp: new Date(),
-      };
-      setChatMessages((prev) => [...prev, aiMessage]);
+      const fallback = generateLocalResponse(text, sprintData);
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: fallback, timestamp: new Date() },
+      ]);
+      await persistMessage("assistant", fallback);
     }
 
     setChatLoading(false);
@@ -262,27 +377,26 @@ export function AIMentor({ sprintId }: AIMentorProps) {
     }
   };
 
-  const generateLocalResponse = (question: string, data: SprintData): string => {
+  const generateLocalResponse = (question: string, data: SprintData | null): string => {
+    if (!data) return "I couldn't load sprint data. Please try refreshing.";
     const q = question.toLowerCase();
-
-    if (q.includes("behind") || q.includes("delayed") || q.includes("slow") || q.includes("why")) {
-      const reasons: string[] = [];
-      if (data.todoTasks > data.completedTasks) reasons.push(`• ${data.todoTasks} tasks pending vs ${data.completedTasks} completed`);
-      if (data.totalCommits < 3) reasons.push("• Very few code commits have been made");
-      if (data.totalMembers < 3) reasons.push("• Team size is small for the workload");
-      return reasons.length > 0
-        ? `Here's why progress may be slow:\n\n${reasons.join("\n")}\n\n**Next steps:** Prioritize high-priority tasks, ensure all team members are actively contributing, and commit code regularly.`
-        : "Your sprint seems on track! Keep the current pace.";
-    }
 
     if (q.includes("next") || q.includes("should") || q.includes("do")) {
       if (data.totalTasks === 0) return "**Step 1:** Create tasks using the AI Sprint Planner\n**Step 2:** Assign tasks to team members\n**Step 3:** Start with high-priority items";
-      if (data.todoTasks > 0 && data.inProgressTasks === 0) return "**Immediate action:** Pick up the highest-priority pending task and move it to 'In Progress'. Focus on one task at a time.";
-      if (data.inProgressTasks > 0) return `You have **${data.inProgressTasks} task(s) in progress**. Complete those before starting new ones. Check if any are blocked.`;
-      return "Great progress! Review completed work, prepare for the sprint demo, and document your learnings.";
+      if (data.todoTasks > 0 && data.inProgressTasks === 0) return "**Immediate action:** Pick up the highest-priority pending task and move it to 'In Progress'.";
+      if (data.inProgressTasks > 0) return `You have **${data.inProgressTasks} task(s) in progress**. Complete those before starting new ones.`;
+      return "Great progress! Review completed work and prepare for the sprint demo.";
     }
 
-    return `Sprint "${data.sprintName}": **${data.progress}% complete** • ${data.completedTasks}/${data.totalTasks} tasks done • ${data.daysRemaining} days remaining • ${data.totalMembers} members • ${data.totalCommits} commits.\n\nAsk about risks, priorities, improvements, or team issues for detailed advice.`;
+    if (q.includes("risk") || q.includes("problem") || q.includes("issue")) {
+      const issues: string[] = [];
+      if (data.todoTasks > data.completedTasks) issues.push(`• ${data.todoTasks} pending vs ${data.completedTasks} completed tasks`);
+      if (data.totalCommits < 3) issues.push("• Very few code commits");
+      if (data.totalMembers < 3) issues.push("• Small team size");
+      return issues.length > 0 ? `**Detected risks:**\n\n${issues.join("\n")}` : "No significant risks detected. Keep up the momentum!";
+    }
+
+    return `**Sprint "${data.sprintName}"**: ${data.progress}% complete • ${data.completedTasks}/${data.totalTasks} tasks done • ${data.daysRemaining} days remaining • ${data.totalMembers} members • ${data.totalCommits} commits.\n\nAsk about risks, priorities, or team issues for detailed advice.`;
   };
 
   if (loading) {
@@ -308,7 +422,7 @@ export function AIMentor({ sprintId }: AIMentorProps) {
               <div>
                 <h2 className="text-xl font-bold font-display">AI Mentor</h2>
                 <p className="text-sm text-muted-foreground">
-                  Your intelligent sprint advisor — powered by AI
+                  Intelligent sprint advisor — powered by AI
                 </p>
               </div>
             </div>
@@ -318,7 +432,6 @@ export function AIMentor({ sprintId }: AIMentorProps) {
             </Button>
           </div>
 
-          {/* Quick Stats */}
           {sprintData && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50">
@@ -366,17 +479,17 @@ export function AIMentor({ sprintId }: AIMentorProps) {
           </TabsTrigger>
         </TabsList>
 
-        {/* Chat Tab (now default) */}
+        {/* Chat Tab */}
         <TabsContent value="chat">
           <Card className="flex flex-col" style={{ height: "520px" }}>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <MessageSquare className="w-5 h-5 text-primary" />
                 Chat with AI Mentor
+                <Badge variant="secondary" className="ml-auto text-xs">Streaming</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col min-h-0">
-              {/* Quick Question Buttons */}
               {chatMessages.length === 0 && (
                 <div className="mb-3">
                   <p className="text-xs text-muted-foreground mb-2">Quick questions:</p>
@@ -397,7 +510,6 @@ export function AIMentor({ sprintId }: AIMentorProps) {
                 </div>
               )}
 
-              {/* Messages */}
               <ScrollArea className="flex-1 pr-4 mb-3">
                 <div className="space-y-4">
                   {chatMessages.length === 0 && (
@@ -420,40 +532,40 @@ export function AIMentor({ sprintId }: AIMentorProps) {
                     >
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          msg.role === "user" ? "bg-builder/10" : "bg-primary/10"
+                          msg.role === "user" ? "bg-primary" : "bg-primary/10"
                         }`}
                       >
                         {msg.role === "user" ? (
-                          <User className="w-4 h-4 text-builder" />
+                          <User className="w-4 h-4 text-primary-foreground" />
                         ) : (
                           <Bot className="w-4 h-4 text-primary" />
                         )}
                       </div>
                       <div
-                        className={`flex-1 p-3 rounded-xl max-w-[85%] ${
+                        className={`max-w-[85%] p-3 rounded-xl text-sm ${
                           msg.role === "user"
-                            ? "bg-builder/10 text-foreground ml-auto"
+                            ? "bg-primary text-primary-foreground"
                             : "bg-muted/50"
                         }`}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                        {msg.role === "assistant" ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        )}
                       </div>
                     </div>
                   ))}
 
-                  {chatLoading && (
+                  {chatLoading && chatMessages[chatMessages.length - 1]?.role === "user" && (
                     <div className="flex gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <Bot className="w-4 h-4 text-primary" />
                       </div>
                       <div className="p-3 rounded-xl bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          <span className="text-xs text-muted-foreground">Analyzing sprint data...</span>
-                        </div>
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
                       </div>
                     </div>
                   )}
@@ -462,38 +574,20 @@ export function AIMentor({ sprintId }: AIMentorProps) {
                 </div>
               </ScrollArea>
 
-              {/* Quick Actions (visible when chat has messages) */}
-              {chatMessages.length > 0 && (
-                <div className="flex gap-1.5 mb-2 flex-wrap">
-                  {QUICK_QUESTIONS.slice(0, 4).map((q) => (
-                    <Button
-                      key={q.label}
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-6 px-2"
-                      onClick={() => handleSendMessage(q.question)}
-                      disabled={chatLoading}
-                    >
-                      {q.label}
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {/* Input */}
-              <div className="flex gap-2 pt-2 border-t border-border">
+              <div className="flex gap-2">
                 <Input
+                  placeholder="Ask about your sprint..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask about priorities, risks, next steps..."
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                   disabled={chatLoading}
                 />
-                <Button
-                  onClick={() => handleSendMessage()}
-                  disabled={!chatInput.trim() || chatLoading}
-                  size="icon"
-                >
+                <Button onClick={() => handleSendMessage()} disabled={chatLoading || !chatInput.trim()} size="icon">
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
@@ -504,30 +598,19 @@ export function AIMentor({ sprintId }: AIMentorProps) {
         {/* Suggestions Tab */}
         <TabsContent value="suggestions">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Lightbulb className="w-5 h-5 text-yellow-500" />
-                Next Step Suggestions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {analysis.suggestions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-6">
-                  Everything looks great! No specific suggestions at this time.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {analysis.suggestions.map((suggestion, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
-                    >
-                      <Zap className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
-                      <p className="text-sm">{suggestion}</p>
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                {analysis.suggestions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No suggestions at this time. Your sprint looks good!</p>
+                ) : (
+                  analysis.suggestions.map((s, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                      <Lightbulb className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <p className="text-sm">{s}</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -535,31 +618,19 @@ export function AIMentor({ sprintId }: AIMentorProps) {
         {/* Risks Tab */}
         <TabsContent value="risks">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-                Risk Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {analysis.risks.length === 0 ? (
-                <div className="text-center py-6">
-                  <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-muted-foreground">No risks detected. Sprint is healthy!</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {analysis.risks.map((risk, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5"
-                    >
-                      <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-                      <p className="text-sm">{risk}</p>
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                {analysis.risks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No risks detected. Great job!</p>
+                ) : (
+                  analysis.risks.map((r, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-destructive/5 border border-destructive/10">
+                      <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                      <p className="text-sm">{r}</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -567,21 +638,12 @@ export function AIMentor({ sprintId }: AIMentorProps) {
         {/* Improvements Tab */}
         <TabsContent value="improvements">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <TrendingUp className="w-5 h-5 text-green-500" />
-                Improvement Suggestions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="space-y-3">
-                {analysis.improvements.map((improvement, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    <TrendingUp className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
-                    <p className="text-sm">{improvement}</p>
+                {analysis.improvements.map((imp, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                    <TrendingUp className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <p className="text-sm">{imp}</p>
                   </div>
                 ))}
               </div>
