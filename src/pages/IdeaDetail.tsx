@@ -12,6 +12,8 @@ import { ApplicationFormDialog } from "@/components/sprint/ApplicationFormDialog
 import { FounderApplicationManager } from "@/components/sprint/FounderApplicationManager";
 import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
+import { BrandingPartnersDisplay } from "@/components/funding/BrandingPartnersDisplay";
+import { FounderFundingRequests } from "@/components/funding/FounderFundingRequests";
 import { 
   MapPin, Clock, Users, Verified, ArrowLeft, Calendar, Target,
   Briefcase, DollarSign, Lock, Rocket, UserPlus, Eye, CheckCircle2, XCircle
@@ -354,10 +356,20 @@ export default function IdeaDetail() {
               {/* Team & Backers Section */}
               <IdeaTeamSection ideaId={idea.id} sprintId={sprint?.id} />
 
+              {/* Branding Partners (public) */}
+              {sprint && <BrandingPartnersDisplay sprintId={sprint.id} />}
+
               {/* Founder Application Manager */}
               {isOwner && sprint && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                   <FounderApplicationManager sprintId={sprint.id} />
+                </motion.div>
+              )}
+
+              {/* Founder Funding Requests */}
+              {isOwner && sprint && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+                  <FounderFundingRequests sprintId={sprint.id} />
                 </motion.div>
               )}
 

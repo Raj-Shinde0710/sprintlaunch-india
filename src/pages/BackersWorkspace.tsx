@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { PieChart, Upload, Eye, Clock, TrendingUp, Activity, Target, Users } from "lucide-react";
+import { PieChart, Upload, Eye, Clock, TrendingUp, Activity, Target, Users, DollarSign } from "lucide-react";
+import { FundingRequestDialog } from "@/components/funding/FundingRequestDialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -81,7 +82,7 @@ export default function BackersWorkspace() {
                         <p className="text-xs text-muted-foreground">{sprint.ideas?.title}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
                       <div className="text-right">
                         <p className="text-sm font-bold">{sprint.progress || 0}%</p>
                         <Progress value={sprint.progress || 0} className="w-24 h-1.5" />
@@ -89,6 +90,12 @@ export default function BackersWorkspace() {
                       <Badge className={sprint.status === "active" ? "bg-green-500/10 text-green-600" : "bg-blue-500/10 text-blue-600"}>
                         {sprint.status}
                       </Badge>
+                      {sprint.status === "completed" && (
+                        <FundingRequestDialog
+                          sprintId={sprint.id}
+                          trigger={<Button size="sm" className="gap-1"><DollarSign className="h-3 w-3" />Fund</Button>}
+                        />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
