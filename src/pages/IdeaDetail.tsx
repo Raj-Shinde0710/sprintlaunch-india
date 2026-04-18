@@ -14,6 +14,7 @@ import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { BrandingPartnersDisplay } from "@/components/funding/BrandingPartnersDisplay";
 import { FounderFundingRequests } from "@/components/funding/FounderFundingRequests";
+import { FundingRequestDialog } from "@/components/funding/FundingRequestDialog";
 import { 
   MapPin, Clock, Users, Verified, ArrowLeft, Calendar, Target,
   Briefcase, DollarSign, Lock, Rocket, UserPlus, Eye, CheckCircle2, XCircle
