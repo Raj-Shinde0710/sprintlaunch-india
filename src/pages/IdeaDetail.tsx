@@ -161,14 +161,6 @@ export default function IdeaDetail() {
     setLoading(false);
   };
 
-  const handleCommit = () => {
-    if (!user) {
-      toast({ title: "Login Required", description: "Please log in to commit funds" });
-      return;
-    }
-    toast({ title: "Commit Funds", description: "Investment feature coming soon!" });
-  };
-
   const canJoinSprint = sprint && ["draft", "active"].includes(sprint.status || "");
 
   const renderBuilderCTA = () => {
