@@ -427,9 +427,20 @@ export default function IdeaDetail() {
                   ) : userRole === "builder" ? (
                     renderBuilderCTA()
                   ) : userRole === "backer" ? (
-                    <Button className="w-full" variant="backer" onClick={handleCommit}>
-                      <DollarSign className="w-4 h-4 mr-2" />Commit Funds
-                    </Button>
+                    sprint ? (
+                      <FundingRequestDialog
+                        sprintId={sprint.id}
+                        trigger={
+                          <Button className="w-full" variant="backer">
+                            <DollarSign className="w-4 h-4 mr-2" />Commit Funds
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <Button className="w-full" variant="backer" disabled>
+                        <DollarSign className="w-4 h-4 mr-2" />Sprint Not Started
+                      </Button>
+                    )
                   ) : userRole === "founder" ? (
                     <Button className="w-full" variant="outline" disabled>
                       <Eye className="w-4 h-4 mr-2" />Viewing as Founder
