@@ -14,6 +14,7 @@ import { PitchGenerator } from "@/components/sprint/PitchGenerator";
 import { BuilderRanking } from "@/components/sprint/BuilderRanking";
 import { BrandingPartnersDisplay } from "@/components/funding/BrandingPartnersDisplay";
 import { FounderFundingRequests } from "@/components/funding/FounderFundingRequests";
+import { FundingRequestDialog } from "@/components/funding/FundingRequestDialog";
 import { 
   MapPin, Clock, Users, Verified, ArrowLeft, Calendar, Target,
   Briefcase, DollarSign, Lock, Rocket, UserPlus, Eye, CheckCircle2, XCircle
@@ -158,14 +159,6 @@ export default function IdeaDetail() {
     }
 
     setLoading(false);
-  };
-
-  const handleCommit = () => {
-    if (!user) {
-      toast({ title: "Login Required", description: "Please log in to commit funds" });
-      return;
-    }
-    toast({ title: "Commit Funds", description: "Investment feature coming soon!" });
   };
 
   const canJoinSprint = sprint && ["draft", "active"].includes(sprint.status || "");
@@ -434,9 +427,20 @@ export default function IdeaDetail() {
                   ) : userRole === "builder" ? (
                     renderBuilderCTA()
                   ) : userRole === "backer" ? (
-                    <Button className="w-full" variant="backer" onClick={handleCommit}>
-                      <DollarSign className="w-4 h-4 mr-2" />Commit Funds
-                    </Button>
+                    sprint ? (
+                      <FundingRequestDialog
+                        sprintId={sprint.id}
+                        trigger={
+                          <Button className="w-full" variant="backer">
+                            <DollarSign className="w-4 h-4 mr-2" />Commit Funds
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <Button className="w-full" variant="backer" disabled>
+                        <DollarSign className="w-4 h-4 mr-2" />Sprint Not Started
+                      </Button>
+                    )
                   ) : userRole === "founder" ? (
                     <Button className="w-full" variant="outline" disabled>
                       <Eye className="w-4 h-4 mr-2" />Viewing as Founder
