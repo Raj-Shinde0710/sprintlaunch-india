@@ -9,7 +9,7 @@ export function BrandingPartnersDisplay({ sprintId }: Props) {
 
   useEffect(() => {
     if (!sprintId) return;
-    (async () => {
+    const fetchPartners = async () => {
       const { data } = await supabase
         .from("branding_partnerships")
         .select("*")
@@ -18,7 +18,13 @@ export function BrandingPartnersDisplay({ sprintId }: Props) {
       const now = new Date();
       const active = (data || []).filter((p: any) => !p.expires_at || new Date(p.expires_at) > now);
       setPartners(active);
-    })();
+    };
+    fetchPartners();
+    const ch = supabase
+      .channel(`branding-public-${sprintId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "branding_partnerships", filter: `sprint_id=eq.${sprintId}` }, () => fetchPartners())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [sprintId]);
 
   if (partners.length === 0) return null;

@@ -49,6 +49,7 @@ export function FundingRequestDialog({ sprintId, trigger, onSuccess }: Props) {
 
     setSubmitting(true);
     try {
+      console.log("[FundingRequest] Submitting", { sprintId, type, amount, name });
       const { data: req, error } = await supabase.from("funding_requests").insert({
         sprint_id: sprintId,
         investor_id: user.id,
@@ -60,7 +61,8 @@ export function FundingRequestDialog({ sprintId, trigger, onSuccess }: Props) {
         message: message || null,
         agreement_accepted: true,
       }).select().single();
-      if (error) throw error;
+      if (error) { console.error("[FundingRequest] insert error:", error); throw error; }
+      console.log("[FundingRequest] Saved", req.id);
 
       if (type === "branding") {
         let logoUrl: string | null = null;

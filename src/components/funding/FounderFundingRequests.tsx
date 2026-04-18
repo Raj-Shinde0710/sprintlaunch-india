@@ -14,11 +14,14 @@ export function FounderFundingRequests({ sprintId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data } = await supabase
+    console.log("[FundingRequests] Fetching for sprint:", sprintId);
+    const { data, error } = await supabase
       .from("funding_requests")
       .select("*")
       .eq("sprint_id", sprintId)
       .order("created_at", { ascending: false });
+    if (error) console.error("[FundingRequests] fetch error:", error);
+    console.log("[FundingRequests] Found", data?.length || 0, "requests");
     setRequests(data || []);
 
     const { data: brand } = await supabase
@@ -31,21 +34,44 @@ export function FounderFundingRequests({ sprintId }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [sprintId]);
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel(`funding-${sprintId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "funding_requests", filter: `sprint_id=eq.${sprintId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "branding_partnerships", filter: `sprint_id=eq.${sprintId}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [sprintId]);
 
   const updateStatus = async (id: string, status: string, brandingId?: string, brandStatus?: string) => {
+    console.log("[FundingRequests] Updating", id, "→", status, brandingId ? `(branding ${brandingId} → ${brandStatus})` : "");
     const { error } = await supabase.from("funding_requests").update({ status }).eq("id", id);
-    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
-    if (brandingId && brandStatus) {
-      await supabase.from("branding_partnerships").update({ status: brandStatus }).eq("id", brandingId);
+    if (error) {
+      console.error("[FundingRequests] update error:", error);
+      return toast({ title: "Error", description: error.message, variant: "destructive" });
     }
-    toast({ title: `Request ${status}` });
+    if (brandingId && brandStatus) {
+      const { error: bErr } = await supabase.from("branding_partnerships").update({ status: brandStatus }).eq("id", brandingId);
+      if (bErr) console.error("[FundingRequests] branding update error:", bErr);
+    }
+    const messages: Record<string, string> = {
+      accepted: "Request accepted successfully ✅",
+      rejected: "Request rejected",
+      completed: "Deal marked as completed 🎉",
+    };
+    toast({ title: messages[status] || `Request ${status}` });
     load();
   };
 
   if (loading) return null;
   if (requests.length === 0) return (
-    <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No funding requests yet.</CardContent></Card>
+    <Card>
+      <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-5 w-5 text-founder" />Funding Requests</CardTitle></CardHeader>
+      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+        No funding requests yet. Investors will appear here once they apply.
+      </CardContent>
+    </Card>
   );
 
   return (
@@ -69,9 +95,14 @@ export function FounderFundingRequests({ sprintId }: Props) {
                   <p className="text-2xl font-bold text-founder mt-1">${Number(r.amount).toLocaleString()}</p>
                   {r.message && <p className="text-sm text-muted-foreground mt-2">"{r.message}"</p>}
                   {branding && (
-                    <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                      <p className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> {branding.brand_name} • {branding.duration_days} days</p>
-                      {branding.website_url && <p className="flex items-center gap-1"><Globe className="h-3 w-3" /> {branding.website_url}</p>}
+                    <div className="text-xs text-muted-foreground mt-2 space-y-1 flex items-start gap-3">
+                      {branding.logo_url && (
+                        <img src={branding.logo_url} alt={branding.brand_name} className="h-12 w-12 object-contain rounded border" />
+                      )}
+                      <div className="space-y-1">
+                        <p className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> {branding.brand_name} • {branding.duration_days} days</p>
+                        {branding.website_url && <p className="flex items-center gap-1"><Globe className="h-3 w-3" /> {branding.website_url}</p>}
+                      </div>
                     </div>
                   )}
                 </div>
