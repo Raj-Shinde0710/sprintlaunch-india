@@ -14,11 +14,14 @@ export function FounderFundingRequests({ sprintId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const { data } = await supabase
+    console.log("[FundingRequests] Fetching for sprint:", sprintId);
+    const { data, error } = await supabase
       .from("funding_requests")
       .select("*")
       .eq("sprint_id", sprintId)
       .order("created_at", { ascending: false });
+    if (error) console.error("[FundingRequests] fetch error:", error);
+    console.log("[FundingRequests] Found", data?.length || 0, "requests");
     setRequests(data || []);
 
     const { data: brand } = await supabase
@@ -31,15 +34,33 @@ export function FounderFundingRequests({ sprintId }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [sprintId]);
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel(`funding-${sprintId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "funding_requests", filter: `sprint_id=eq.${sprintId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "branding_partnerships", filter: `sprint_id=eq.${sprintId}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [sprintId]);
 
   const updateStatus = async (id: string, status: string, brandingId?: string, brandStatus?: string) => {
+    console.log("[FundingRequests] Updating", id, "→", status, brandingId ? `(branding ${brandingId} → ${brandStatus})` : "");
     const { error } = await supabase.from("funding_requests").update({ status }).eq("id", id);
-    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
-    if (brandingId && brandStatus) {
-      await supabase.from("branding_partnerships").update({ status: brandStatus }).eq("id", brandingId);
+    if (error) {
+      console.error("[FundingRequests] update error:", error);
+      return toast({ title: "Error", description: error.message, variant: "destructive" });
     }
-    toast({ title: `Request ${status}` });
+    if (brandingId && brandStatus) {
+      const { error: bErr } = await supabase.from("branding_partnerships").update({ status: brandStatus }).eq("id", brandingId);
+      if (bErr) console.error("[FundingRequests] branding update error:", bErr);
+    }
+    const messages: Record<string, string> = {
+      accepted: "Request accepted successfully ✅",
+      rejected: "Request rejected",
+      completed: "Deal marked as completed 🎉",
+    };
+    toast({ title: messages[status] || `Request ${status}` });
     load();
   };
 
