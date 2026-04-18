@@ -66,7 +66,12 @@ export function FounderFundingRequests({ sprintId }: Props) {
 
   if (loading) return null;
   if (requests.length === 0) return (
-    <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No funding requests yet.</CardContent></Card>
+    <Card>
+      <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-5 w-5 text-founder" />Funding Requests</CardTitle></CardHeader>
+      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+        No funding requests yet. Investors will appear here once they apply.
+      </CardContent>
+    </Card>
   );
 
   return (
