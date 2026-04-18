@@ -95,9 +95,14 @@ export function FounderFundingRequests({ sprintId }: Props) {
                   <p className="text-2xl font-bold text-founder mt-1">${Number(r.amount).toLocaleString()}</p>
                   {r.message && <p className="text-sm text-muted-foreground mt-2">"{r.message}"</p>}
                   {branding && (
-                    <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                      <p className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> {branding.brand_name} • {branding.duration_days} days</p>
-                      {branding.website_url && <p className="flex items-center gap-1"><Globe className="h-3 w-3" /> {branding.website_url}</p>}
+                    <div className="text-xs text-muted-foreground mt-2 space-y-1 flex items-start gap-3">
+                      {branding.logo_url && (
+                        <img src={branding.logo_url} alt={branding.brand_name} className="h-12 w-12 object-contain rounded border" />
+                      )}
+                      <div className="space-y-1">
+                        <p className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> {branding.brand_name} • {branding.duration_days} days</p>
+                        {branding.website_url && <p className="flex items-center gap-1"><Globe className="h-3 w-3" /> {branding.website_url}</p>}
+                      </div>
                     </div>
                   )}
                 </div>
