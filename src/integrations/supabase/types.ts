@@ -52,6 +52,69 @@ export type Database = {
           },
         ]
       }
+      branding_partnerships: {
+        Row: {
+          approved_at: string | null
+          brand_name: string
+          created_at: string
+          duration_days: number
+          expires_at: string | null
+          funding_request_id: string | null
+          id: string
+          investor_id: string
+          logo_url: string | null
+          sprint_id: string
+          status: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          brand_name: string
+          created_at?: string
+          duration_days?: number
+          expires_at?: string | null
+          funding_request_id?: string | null
+          id?: string
+          investor_id: string
+          logo_url?: string | null
+          sprint_id: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          brand_name?: string
+          created_at?: string
+          duration_days?: number
+          expires_at?: string | null
+          funding_request_id?: string | null
+          id?: string
+          investor_id?: string
+          logo_url?: string | null
+          sprint_id?: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branding_partnerships_funding_request_id_fkey"
+            columns: ["funding_request_id"]
+            isOneToOne: false
+            referencedRelation: "funding_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branding_partnerships_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_commits: {
         Row: {
           code_content: string
@@ -168,6 +231,74 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "demo_requests_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funding_requests: {
+        Row: {
+          accepted_at: string | null
+          agreement_accepted: boolean
+          amount: number
+          completed_at: string | null
+          contact_email: string
+          contact_phone: string | null
+          created_at: string
+          id: string
+          investor_id: string
+          investor_name: string
+          investor_type: string
+          message: string | null
+          platform_fee: number | null
+          rejected_at: string | null
+          sprint_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          agreement_accepted?: boolean
+          amount: number
+          completed_at?: string | null
+          contact_email: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          investor_id: string
+          investor_name: string
+          investor_type: string
+          message?: string | null
+          platform_fee?: number | null
+          rejected_at?: string | null
+          sprint_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          agreement_accepted?: boolean
+          amount?: number
+          completed_at?: string | null
+          contact_email?: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          investor_id?: string
+          investor_name?: string
+          investor_type?: string
+          message?: string | null
+          platform_fee?: number | null
+          rejected_at?: string | null
+          sprint_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funding_requests_sprint_id_fkey"
             columns: ["sprint_id"]
             isOneToOne: false
             referencedRelation: "sprints"
