@@ -83,12 +83,13 @@ export function TeamChat({ sprintId, departmentId }: TeamChatProps) {
   }, [messages]);
 
   const fetchMessages = async () => {
-    const { data } = await supabase
+    let q = supabase
       .from("sprint_messages")
-      .select("id, sprint_id, sender_id, message_text, created_at")
-      .eq("sprint_id", sprintId)
-      .order("created_at", { ascending: true })
-      .limit(200);
+      .select("id, sprint_id, sender_id, message_text, created_at, department_id")
+      .eq("sprint_id", sprintId);
+    if (departmentId) q = q.eq("department_id", departmentId);
+    else q = q.is("department_id", null);
+    const { data } = await q.order("created_at", { ascending: true }).limit(200);
 
     const msgs = (data || []) as Message[];
     setMessages(msgs);
