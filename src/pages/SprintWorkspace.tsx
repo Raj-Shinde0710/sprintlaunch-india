@@ -116,6 +116,7 @@ export default function SprintWorkspace() {
 
   const isFounder = sprint?.idea.founder_id === user?.id;
   const isMember = members.some((m) => m.user_id === user?.id);
+  const { departments, visibleDepartments, accessibleIds, selectedId: selectedDepartmentId, setSelectedId: setSelectedDepartmentId, refresh: refreshDepartments } = useDepartments(id, isFounder);
 
   useEffect(() => {
     if (id) fetchSprintData();
