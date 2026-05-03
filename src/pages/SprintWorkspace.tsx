@@ -36,6 +36,11 @@ import { SprintWorkspaceSidebar } from "@/components/sprint/SprintWorkspaceSideb
 import { SprintSOPSection } from "@/components/sprint/SprintSOPSection";
 import { SprintAutomationSection } from "@/components/sprint/SprintAutomationSection";
 import { SprintFinanceSection } from "@/components/sprint/SprintFinanceSection";
+import { useDepartments } from "@/hooks/useDepartments";
+import { DepartmentSelector } from "@/components/sprint/DepartmentSelector";
+import { DepartmentManager } from "@/components/sprint/DepartmentManager";
+import { DepartmentAccessRequest } from "@/components/sprint/DepartmentAccessRequest";
+import { FounderAccessRequests } from "@/components/sprint/FounderAccessRequests";
 import {
   Rocket,
   ArrowLeft,
@@ -111,6 +116,7 @@ export default function SprintWorkspace() {
 
   const isFounder = sprint?.idea.founder_id === user?.id;
   const isMember = members.some((m) => m.user_id === user?.id);
+  const { departments, visibleDepartments, accessibleIds, selectedId: selectedDepartmentId, setSelectedId: setSelectedDepartmentId, refresh: refreshDepartments } = useDepartments(id, isFounder);
 
   useEffect(() => {
     if (id) fetchSprintData();
@@ -322,17 +328,17 @@ export default function SprintWorkspace() {
           </div>
         );
       case "planner":
-        return <AISprintPlanner sprintId={sprint.id} ideaDescription={sprint.idea.pitch || sprint.idea.title} industry={sprint.idea.industry || []} sprintDuration={sprint.duration_days} onTasksCreated={fetchSprintData} />;
+        return <AISprintPlanner sprintId={sprint.id} ideaDescription={sprint.idea.pitch || sprint.idea.title} industry={sprint.idea.industry || []} sprintDuration={sprint.duration_days} departmentId={selectedDepartmentId} departmentName={departments.find((d) => d.id === selectedDepartmentId)?.name} onTasksCreated={fetchSprintData} />;
       case "mentor":
-        return <AIMentor sprintId={sprint.id} />;
+        return <AIMentor sprintId={sprint.id} departmentId={selectedDepartmentId} departmentName={departments.find((d) => d.id === selectedDepartmentId)?.name} />;
       case "tasks":
-        return <SprintTaskBoard sprintId={sprint.id} isFounder={isFounder} isMember={isMember} sprintStatus={sprint.status} onProgressUpdate={fetchSprintData} />;
+        return <SprintTaskBoard sprintId={sprint.id} isFounder={isFounder} isMember={isMember} sprintStatus={sprint.status} departmentId={selectedDepartmentId} onProgressUpdate={fetchSprintData} />;
       case "timeline":
-        return <SprintTimeline sprintId={sprint.id} />;
+        return <SprintTimeline sprintId={sprint.id} departmentId={selectedDepartmentId} />;
       case "repository":
-        return <SprintRepository sprintId={sprint.id} />;
+        return <SprintRepository sprintId={sprint.id} departmentId={selectedDepartmentId} />;
       case "sop":
-        return <SprintSOPSection ideaPitch={sprint.idea.pitch} ideaTitle={sprint.idea.title} />;
+        return <SprintSOPSection ideaPitch={sprint.idea.pitch} ideaTitle={sprint.idea.title} sprintId={sprint.id} departmentId={selectedDepartmentId} departmentName={departments.find((d) => d.id === selectedDepartmentId)?.name} />;
       case "automation":
         return <SprintAutomationSection sprintId={sprint.id} />;
       case "finance":
@@ -340,7 +346,7 @@ export default function SprintWorkspace() {
       case "equity":
         return <EquityChart distribution={equityDistribution} sprintId={sprint.id} isFounder={isFounder} sprintStatus={sprint.status} />;
       case "chat":
-        return <TeamChat sprintId={sprint.id} />;
+        return <TeamChat sprintId={sprint.id} departmentId={selectedDepartmentId} />;
       case "risk":
         return <RiskIndicator sprintId={sprint.id} />;
       case "demo":
@@ -383,33 +389,51 @@ export default function SprintWorkspace() {
             </div>
           </div>
 
-          {isFounder && (
-            <div className="flex gap-2">
-              {sprint.status === "draft" && (
-                <Button size="sm" variant="default" onClick={handleActivateSprint} disabled={actionLoading || members.length < 2}>
-                  <Play className="w-3 h-3 mr-1" /> Start
-                </Button>
-              )}
-              {sprint.status === "active" && (
-                <>
-                  <Button size="sm" variant="outline" onClick={handlePauseSprint} disabled={actionLoading}>
-                    <Pause className="w-3 h-3 mr-1" /> Pause
+          <div className="flex items-center gap-2">
+            <DepartmentSelector
+              departments={visibleDepartments}
+              value={selectedDepartmentId}
+              onChange={setSelectedDepartmentId}
+            />
+            {isFounder && (
+              <DepartmentManager sprintId={sprint.id} departments={departments} onChanged={refreshDepartments} />
+            )}
+            {!isFounder && isMember && (
+              <DepartmentAccessRequest sprintId={sprint.id} departments={departments} accessibleIds={accessibleIds} />
+            )}
+            {isFounder && (
+              <>
+                {sprint.status === "draft" && (
+                  <Button size="sm" variant="default" onClick={handleActivateSprint} disabled={actionLoading || members.length < 2}>
+                    <Play className="w-3 h-3 mr-1" /> Start
                   </Button>
-                  <Button size="sm" variant="default" onClick={handleCompleteSprint} disabled={actionLoading}>
-                    <Flag className="w-3 h-3 mr-1" /> Complete
+                )}
+                {sprint.status === "active" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={handlePauseSprint} disabled={actionLoading}>
+                      <Pause className="w-3 h-3 mr-1" /> Pause
+                    </Button>
+                    <Button size="sm" variant="default" onClick={handleCompleteSprint} disabled={actionLoading}>
+                      <Flag className="w-3 h-3 mr-1" /> Complete
+                    </Button>
+                  </>
+                )}
+                {sprint.status === "paused" && (
+                  <Button size="sm" variant="default" onClick={handleResumeSprint} disabled={actionLoading}>
+                    <Play className="w-3 h-3 mr-1" /> Resume
                   </Button>
-                </>
-              )}
-              {sprint.status === "paused" && (
-                <Button size="sm" variant="default" onClick={handleResumeSprint} disabled={actionLoading}>
-                  <Play className="w-3 h-3 mr-1" /> Resume
-                </Button>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto p-6">
+          {isFounder && activeSection === "dashboard" && (
+            <div className="mb-6">
+              <FounderAccessRequests sprintId={sprint.id} onChanged={refreshDepartments} />
+            </div>
+          )}
           {renderContent()}
         </main>
       </div>

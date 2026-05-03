@@ -13,14 +13,16 @@ interface Message {
   sender_id: string;
   message_text: string;
   created_at: string;
+  department_id?: string | null;
   sender_name?: string;
 }
 
 interface TeamChatProps {
   sprintId: string;
+  departmentId?: string | null;
 }
 
-export function TeamChat({ sprintId }: TeamChatProps) {
+export function TeamChat({ sprintId, departmentId }: TeamChatProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -31,23 +33,28 @@ export function TeamChat({ sprintId }: TeamChatProps) {
   useEffect(() => {
     fetchMessages();
 
+    const filter = departmentId
+      ? `sprint_id=eq.${sprintId}`
+      : `sprint_id=eq.${sprintId}`;
     const channel = supabase
-      .channel(`sprint-chat-${sprintId}`)
+      .channel(`sprint-chat-${sprintId}-${departmentId || "none"}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "sprint_messages",
-          filter: `sprint_id=eq.${sprintId}`,
+          filter,
         },
         (payload) => {
           const msg = payload.new as Message;
+          // Filter by department locally
+          if (departmentId && msg.department_id !== departmentId) return;
+          if (!departmentId && msg.department_id) return;
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          // Fetch name if unknown
           if (!profileMap.has(msg.sender_id)) {
             supabase
               .from("profiles")
@@ -67,7 +74,7 @@ export function TeamChat({ sprintId }: TeamChatProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sprintId]);
+  }, [sprintId, departmentId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -76,12 +83,13 @@ export function TeamChat({ sprintId }: TeamChatProps) {
   }, [messages]);
 
   const fetchMessages = async () => {
-    const { data } = await supabase
+    let q = supabase
       .from("sprint_messages")
-      .select("id, sprint_id, sender_id, message_text, created_at")
-      .eq("sprint_id", sprintId)
-      .order("created_at", { ascending: true })
-      .limit(200);
+      .select("id, sprint_id, sender_id, message_text, created_at, department_id")
+      .eq("sprint_id", sprintId);
+    if (departmentId) q = q.eq("department_id", departmentId);
+    else q = q.is("department_id", null);
+    const { data } = await q.order("created_at", { ascending: true }).limit(200);
 
     const msgs = (data || []) as Message[];
     setMessages(msgs);
@@ -108,6 +116,7 @@ export function TeamChat({ sprintId }: TeamChatProps) {
       sprint_id: sprintId,
       sender_id: user.id,
       message_text: newMessage.trim(),
+      department_id: departmentId || null,
     });
 
     if (error) {

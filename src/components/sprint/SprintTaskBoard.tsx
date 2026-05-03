@@ -51,6 +51,7 @@ interface SprintTaskBoardProps {
   isFounder: boolean;
   isMember: boolean;
   sprintStatus: string;
+  departmentId?: string | null;
   onProgressUpdate: () => void;
 }
 
@@ -71,6 +72,7 @@ export function SprintTaskBoard({
   isFounder,
   isMember,
   sprintStatus,
+  departmentId,
   onProgressUpdate,
 }: SprintTaskBoardProps) {
   const { user } = useAuth();
@@ -95,35 +97,23 @@ export function SprintTaskBoard({
     fetchTasks();
     fetchMembers();
 
-    // Realtime subscription for task updates
     const channel = supabase
-      .channel(`tasks-${sprintId}`)
+      .channel(`tasks-${sprintId}-${departmentId || "none"}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "tasks",
-          filter: `sprint_id=eq.${sprintId}`,
-        },
-        () => {
-          fetchTasks();
-        }
+        { event: "*", schema: "public", table: "tasks", filter: `sprint_id=eq.${sprintId}` },
+        () => { fetchTasks(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [sprintId]);
+    return () => { supabase.removeChannel(channel); };
+  }, [sprintId, departmentId]);
 
   const fetchTasks = async () => {
-    // Fetch tasks separately, then enrich with profiles
-    const { data: tasksData } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("sprint_id", sprintId)
-      .order("priority", { ascending: false });
+    let q = supabase.from("tasks").select("*").eq("sprint_id", sprintId);
+    if (departmentId) q = q.eq("department_id", departmentId);
+    else q = q.is("department_id", null);
+    const { data: tasksData } = await q.order("priority", { ascending: false });
 
     if (tasksData) {
       // Get unique assignee IDs
