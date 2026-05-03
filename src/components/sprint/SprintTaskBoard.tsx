@@ -51,6 +51,7 @@ interface SprintTaskBoardProps {
   isFounder: boolean;
   isMember: boolean;
   sprintStatus: string;
+  departmentId?: string | null;
   onProgressUpdate: () => void;
 }
 
@@ -71,6 +72,7 @@ export function SprintTaskBoard({
   isFounder,
   isMember,
   sprintStatus,
+  departmentId,
   onProgressUpdate,
 }: SprintTaskBoardProps) {
   const { user } = useAuth();
