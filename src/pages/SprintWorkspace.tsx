@@ -389,33 +389,51 @@ export default function SprintWorkspace() {
             </div>
           </div>
 
-          {isFounder && (
-            <div className="flex gap-2">
-              {sprint.status === "draft" && (
-                <Button size="sm" variant="default" onClick={handleActivateSprint} disabled={actionLoading || members.length < 2}>
-                  <Play className="w-3 h-3 mr-1" /> Start
-                </Button>
-              )}
-              {sprint.status === "active" && (
-                <>
-                  <Button size="sm" variant="outline" onClick={handlePauseSprint} disabled={actionLoading}>
-                    <Pause className="w-3 h-3 mr-1" /> Pause
+          <div className="flex items-center gap-2">
+            <DepartmentSelector
+              departments={visibleDepartments}
+              value={selectedDepartmentId}
+              onChange={setSelectedDepartmentId}
+            />
+            {isFounder && (
+              <DepartmentManager sprintId={sprint.id} departments={departments} onChanged={refreshDepartments} />
+            )}
+            {!isFounder && isMember && (
+              <DepartmentAccessRequest sprintId={sprint.id} departments={departments} accessibleIds={accessibleIds} />
+            )}
+            {isFounder && (
+              <>
+                {sprint.status === "draft" && (
+                  <Button size="sm" variant="default" onClick={handleActivateSprint} disabled={actionLoading || members.length < 2}>
+                    <Play className="w-3 h-3 mr-1" /> Start
                   </Button>
-                  <Button size="sm" variant="default" onClick={handleCompleteSprint} disabled={actionLoading}>
-                    <Flag className="w-3 h-3 mr-1" /> Complete
+                )}
+                {sprint.status === "active" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={handlePauseSprint} disabled={actionLoading}>
+                      <Pause className="w-3 h-3 mr-1" /> Pause
+                    </Button>
+                    <Button size="sm" variant="default" onClick={handleCompleteSprint} disabled={actionLoading}>
+                      <Flag className="w-3 h-3 mr-1" /> Complete
+                    </Button>
+                  </>
+                )}
+                {sprint.status === "paused" && (
+                  <Button size="sm" variant="default" onClick={handleResumeSprint} disabled={actionLoading}>
+                    <Play className="w-3 h-3 mr-1" /> Resume
                   </Button>
-                </>
-              )}
-              {sprint.status === "paused" && (
-                <Button size="sm" variant="default" onClick={handleResumeSprint} disabled={actionLoading}>
-                  <Play className="w-3 h-3 mr-1" /> Resume
-                </Button>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto p-6">
+          {isFounder && activeSection === "dashboard" && (
+            <div className="mb-6">
+              <FounderAccessRequests sprintId={sprint.id} onChanged={refreshDepartments} />
+            </div>
+          )}
           {renderContent()}
         </main>
       </div>
