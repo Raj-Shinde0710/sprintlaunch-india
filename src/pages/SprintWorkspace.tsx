@@ -328,17 +328,17 @@ export default function SprintWorkspace() {
           </div>
         );
       case "planner":
-        return <AISprintPlanner sprintId={sprint.id} ideaDescription={sprint.idea.pitch || sprint.idea.title} industry={sprint.idea.industry || []} sprintDuration={sprint.duration_days} onTasksCreated={fetchSprintData} />;
+        return <AISprintPlanner sprintId={sprint.id} ideaDescription={sprint.idea.pitch || sprint.idea.title} industry={sprint.idea.industry || []} sprintDuration={sprint.duration_days} departmentId={selectedDepartmentId} departmentName={departments.find((d) => d.id === selectedDepartmentId)?.name} onTasksCreated={fetchSprintData} />;
       case "mentor":
-        return <AIMentor sprintId={sprint.id} />;
+        return <AIMentor sprintId={sprint.id} departmentId={selectedDepartmentId} departmentName={departments.find((d) => d.id === selectedDepartmentId)?.name} />;
       case "tasks":
-        return <SprintTaskBoard sprintId={sprint.id} isFounder={isFounder} isMember={isMember} sprintStatus={sprint.status} onProgressUpdate={fetchSprintData} />;
+        return <SprintTaskBoard sprintId={sprint.id} isFounder={isFounder} isMember={isMember} sprintStatus={sprint.status} departmentId={selectedDepartmentId} onProgressUpdate={fetchSprintData} />;
       case "timeline":
-        return <SprintTimeline sprintId={sprint.id} />;
+        return <SprintTimeline sprintId={sprint.id} departmentId={selectedDepartmentId} />;
       case "repository":
-        return <SprintRepository sprintId={sprint.id} />;
+        return <SprintRepository sprintId={sprint.id} departmentId={selectedDepartmentId} />;
       case "sop":
-        return <SprintSOPSection ideaPitch={sprint.idea.pitch} ideaTitle={sprint.idea.title} />;
+        return <SprintSOPSection ideaPitch={sprint.idea.pitch} ideaTitle={sprint.idea.title} sprintId={sprint.id} departmentId={selectedDepartmentId} departmentName={departments.find((d) => d.id === selectedDepartmentId)?.name} />;
       case "automation":
         return <SprintAutomationSection sprintId={sprint.id} />;
       case "finance":
@@ -346,7 +346,7 @@ export default function SprintWorkspace() {
       case "equity":
         return <EquityChart distribution={equityDistribution} sprintId={sprint.id} isFounder={isFounder} sprintStatus={sprint.status} />;
       case "chat":
-        return <TeamChat sprintId={sprint.id} />;
+        return <TeamChat sprintId={sprint.id} departmentId={selectedDepartmentId} />;
       case "risk":
         return <RiskIndicator sprintId={sprint.id} />;
       case "demo":
