@@ -19,30 +19,43 @@ export type Database = {
           content: string
           context_metadata: Json | null
           created_at: string
+          department_id: string | null
           id: string
           role: string
           sprint_id: string
+          tool_type: string | null
           user_id: string
         }
         Insert: {
           content: string
           context_metadata?: Json | null
           created_at?: string
+          department_id?: string | null
           id?: string
           role?: string
           sprint_id: string
+          tool_type?: string | null
           user_id: string
         }
         Update: {
           content?: string
           context_metadata?: Json | null
           created_at?: string
+          department_id?: string | null
           id?: string
           role?: string
           sprint_id?: string
+          tool_type?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_chat_messages_sprint_id_fkey"
             columns: ["sprint_id"]
@@ -237,6 +250,106 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      department_access_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          department_id: string
+          id: string
+          message: string | null
+          sprint_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          department_id: string
+          id?: string
+          message?: string | null
+          sprint_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          department_id?: string
+          id?: string
+          message?: string | null
+          sprint_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_access_requests_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      department_members: {
+        Row: {
+          department_id: string
+          id: string
+          joined_at: string
+          sprint_id: string
+          user_id: string
+        }
+        Insert: {
+          department_id: string
+          id?: string
+          joined_at?: string
+          sprint_id: string
+          user_id: string
+        }
+        Update: {
+          department_id?: string
+          id?: string
+          joined_at?: string
+          sprint_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_members_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          name: string
+          sprint_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          sprint_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          sprint_id?: string
+        }
+        Relationships: []
       }
       funding_requests: {
         Row: {
@@ -481,6 +594,7 @@ export type Database = {
           answers: Json | null
           availability_hours: number | null
           created_at: string | null
+          department: string | null
           id: string
           message: string | null
           portfolio_links: string[] | null
@@ -495,6 +609,7 @@ export type Database = {
           answers?: Json | null
           availability_hours?: number | null
           created_at?: string | null
+          department?: string | null
           id?: string
           message?: string | null
           portfolio_links?: string[] | null
@@ -509,6 +624,7 @@ export type Database = {
           answers?: Json | null
           availability_hours?: number | null
           created_at?: string | null
+          department?: string | null
           id?: string
           message?: string | null
           portfolio_links?: string[] | null
@@ -533,6 +649,7 @@ export type Database = {
         Row: {
           commit_message: string
           created_at: string
+          department_id: string | null
           file_name: string
           file_size: number | null
           file_url: string
@@ -543,6 +660,7 @@ export type Database = {
         Insert: {
           commit_message: string
           created_at?: string
+          department_id?: string | null
           file_name: string
           file_size?: number | null
           file_url: string
@@ -553,6 +671,7 @@ export type Database = {
         Update: {
           commit_message?: string
           created_at?: string
+          department_id?: string | null
           file_name?: string
           file_size?: number | null
           file_url?: string
@@ -561,6 +680,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sprint_commits_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sprint_commits_sprint_id_fkey"
             columns: ["sprint_id"]
@@ -635,6 +761,7 @@ export type Database = {
       sprint_messages: {
         Row: {
           created_at: string
+          department_id: string | null
           id: string
           message_text: string
           sender_id: string
@@ -642,6 +769,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          department_id?: string | null
           id?: string
           message_text: string
           sender_id: string
@@ -649,12 +777,20 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          department_id?: string | null
           id?: string
           message_text?: string
           sender_id?: string
           sprint_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sprint_messages_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sprint_messages_sprint_id_fkey"
             columns: ["sprint_id"]
@@ -734,6 +870,7 @@ export type Database = {
       sprint_timeline: {
         Row: {
           created_at: string | null
+          department_id: string | null
           event_data: Json | null
           event_type: string
           id: string
@@ -742,6 +879,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          department_id?: string | null
           event_data?: Json | null
           event_type: string
           id?: string
@@ -750,6 +888,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          department_id?: string | null
           event_data?: Json | null
           event_type?: string
           id?: string
@@ -757,6 +896,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sprint_timeline_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sprint_timeline_sprint_id_fkey"
             columns: ["sprint_id"]
@@ -864,6 +1010,7 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           created_by: string | null
+          department_id: string | null
           description: string | null
           due_date: string | null
           hours_estimated: number | null
@@ -880,6 +1027,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
+          department_id?: string | null
           description?: string | null
           due_date?: string | null
           hours_estimated?: number | null
@@ -896,6 +1044,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
+          department_id?: string | null
           description?: string | null
           due_date?: string | null
           hours_estimated?: number | null
@@ -908,6 +1057,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_sprint_id_fkey"
             columns: ["sprint_id"]
@@ -958,6 +1114,7 @@ export type Database = {
         Args: { sprint_uuid: string }
         Returns: number
       }
+      delete_idea_cascade: { Args: { _idea_id: string }; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -968,6 +1125,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_department_member: {
+        Args: { _dept_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_sprint_founder: {
+        Args: { _sprint_id: string; _user_id: string }
+        Returns: boolean
+      }
+      seed_default_departments: {
+        Args: { _founder_id: string; _sprint_id: string }
+        Returns: undefined
       }
     }
     Enums: {
