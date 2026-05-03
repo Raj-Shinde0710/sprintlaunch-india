@@ -22,7 +22,7 @@ interface TeamChatProps {
   departmentId?: string | null;
 }
 
-export function TeamChat({ sprintId }: TeamChatProps) {
+export function TeamChat({ sprintId, departmentId }: TeamChatProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
