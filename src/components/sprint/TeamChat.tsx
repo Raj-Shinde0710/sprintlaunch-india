@@ -116,6 +116,7 @@ export function TeamChat({ sprintId, departmentId }: TeamChatProps) {
       sprint_id: sprintId,
       sender_id: user.id,
       message_text: newMessage.trim(),
+      department_id: departmentId || null,
     });
 
     if (error) {
