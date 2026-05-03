@@ -36,6 +36,11 @@ import { SprintWorkspaceSidebar } from "@/components/sprint/SprintWorkspaceSideb
 import { SprintSOPSection } from "@/components/sprint/SprintSOPSection";
 import { SprintAutomationSection } from "@/components/sprint/SprintAutomationSection";
 import { SprintFinanceSection } from "@/components/sprint/SprintFinanceSection";
+import { useDepartments } from "@/hooks/useDepartments";
+import { DepartmentSelector } from "@/components/sprint/DepartmentSelector";
+import { DepartmentManager } from "@/components/sprint/DepartmentManager";
+import { DepartmentAccessRequest } from "@/components/sprint/DepartmentAccessRequest";
+import { FounderAccessRequests } from "@/components/sprint/FounderAccessRequests";
 import {
   Rocket,
   ArrowLeft,
