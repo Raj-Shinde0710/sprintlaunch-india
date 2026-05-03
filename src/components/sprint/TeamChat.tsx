@@ -33,23 +33,28 @@ export function TeamChat({ sprintId, departmentId }: TeamChatProps) {
   useEffect(() => {
     fetchMessages();
 
+    const filter = departmentId
+      ? `sprint_id=eq.${sprintId}`
+      : `sprint_id=eq.${sprintId}`;
     const channel = supabase
-      .channel(`sprint-chat-${sprintId}`)
+      .channel(`sprint-chat-${sprintId}-${departmentId || "none"}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "sprint_messages",
-          filter: `sprint_id=eq.${sprintId}`,
+          filter,
         },
         (payload) => {
           const msg = payload.new as Message;
+          // Filter by department locally
+          if (departmentId && msg.department_id !== departmentId) return;
+          if (!departmentId && msg.department_id) return;
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          // Fetch name if unknown
           if (!profileMap.has(msg.sender_id)) {
             supabase
               .from("profiles")
@@ -69,7 +74,7 @@ export function TeamChat({ sprintId, departmentId }: TeamChatProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sprintId]);
+  }, [sprintId, departmentId]);
 
   useEffect(() => {
     if (scrollRef.current) {
