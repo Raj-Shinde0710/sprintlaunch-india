@@ -97,27 +97,17 @@ export function SprintTaskBoard({
     fetchTasks();
     fetchMembers();
 
-    // Realtime subscription for task updates
     const channel = supabase
-      .channel(`tasks-${sprintId}`)
+      .channel(`tasks-${sprintId}-${departmentId || "none"}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "tasks",
-          filter: `sprint_id=eq.${sprintId}`,
-        },
-        () => {
-          fetchTasks();
-        }
+        { event: "*", schema: "public", table: "tasks", filter: `sprint_id=eq.${sprintId}` },
+        () => { fetchTasks(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [sprintId]);
+    return () => { supabase.removeChannel(channel); };
+  }, [sprintId, departmentId]);
 
   const fetchTasks = async () => {
     // Fetch tasks separately, then enrich with profiles
