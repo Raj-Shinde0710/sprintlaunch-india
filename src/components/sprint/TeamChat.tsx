@@ -13,11 +13,13 @@ interface Message {
   sender_id: string;
   message_text: string;
   created_at: string;
+  department_id?: string | null;
   sender_name?: string;
 }
 
 interface TeamChatProps {
   sprintId: string;
+  departmentId?: string | null;
 }
 
 export function TeamChat({ sprintId }: TeamChatProps) {
