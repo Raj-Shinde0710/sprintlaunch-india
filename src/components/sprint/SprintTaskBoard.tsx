@@ -110,12 +110,10 @@ export function SprintTaskBoard({
   }, [sprintId, departmentId]);
 
   const fetchTasks = async () => {
-    // Fetch tasks separately, then enrich with profiles
-    const { data: tasksData } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("sprint_id", sprintId)
-      .order("priority", { ascending: false });
+    let q = supabase.from("tasks").select("*").eq("sprint_id", sprintId);
+    if (departmentId) q = q.eq("department_id", departmentId);
+    else q = q.is("department_id", null);
+    const { data: tasksData } = await q.order("priority", { ascending: false });
 
     if (tasksData) {
       // Get unique assignee IDs
