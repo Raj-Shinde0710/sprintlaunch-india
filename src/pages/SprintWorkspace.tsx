@@ -100,7 +100,7 @@ interface SprintMember {
 }
 
 export default function SprintWorkspace() {
-  const { id } = useParams();
+  const { id, departmentId: urlDepartmentId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -117,6 +117,18 @@ export default function SprintWorkspace() {
   const isFounder = sprint?.idea.founder_id === user?.id;
   const isMember = members.some((m) => m.user_id === user?.id);
   const { departments, visibleDepartments, accessibleIds, selectedId: selectedDepartmentId, setSelectedId: setSelectedDepartmentId, refresh: refreshDepartments } = useDepartments(id, isFounder);
+
+  // Sync selected dept with URL param
+  useEffect(() => {
+    if (urlDepartmentId && urlDepartmentId !== selectedDepartmentId) {
+      setSelectedDepartmentId(urlDepartmentId);
+    }
+  }, [urlDepartmentId, selectedDepartmentId, setSelectedDepartmentId]);
+
+  const handleDeptChange = (newId: string) => {
+    setSelectedDepartmentId(newId);
+    if (id) navigate(`/sprint/${id}/department/${newId}`);
+  };
 
   useEffect(() => {
     if (id) fetchSprintData();
@@ -375,13 +387,18 @@ export default function SprintWorkspace() {
         {/* Header */}
         <header className="h-14 flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-6 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="shrink-0">
-              <ArrowLeft className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={() => navigate(`/sprint/${sprint.id}`)} className="shrink-0">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Departments
             </Button>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold truncate">{sprint.name}</h1>
                 <Badge className={`${getStatusColor(sprint.status)} text-xs`}>{sprint.status}</Badge>
+                {selectedDepartmentId && (
+                  <Badge variant="outline" className="text-xs">
+                    Department: {departments.find((d) => d.id === selectedDepartmentId)?.name || "—"}
+                  </Badge>
+                )}
               </div>
               <Link to={`/idea/${sprint.idea.id}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                 {sprint.idea.title}
@@ -393,7 +410,7 @@ export default function SprintWorkspace() {
             <DepartmentSelector
               departments={visibleDepartments}
               value={selectedDepartmentId}
-              onChange={setSelectedDepartmentId}
+              onChange={handleDeptChange}
             />
             {isFounder && (
               <DepartmentManager sprintId={sprint.id} departments={departments} onChanged={refreshDepartments} />
