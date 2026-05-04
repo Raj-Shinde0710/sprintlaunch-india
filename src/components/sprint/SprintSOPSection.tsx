@@ -8,6 +8,9 @@ import ReactMarkdown from "react-markdown";
 interface SprintSOPSectionProps {
   ideaPitch: string;
   ideaTitle: string;
+  sprintId?: string;
+  departmentId?: string | null;
+  departmentName?: string;
 }
 
 const defaultSOPs = [

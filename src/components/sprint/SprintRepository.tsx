@@ -39,6 +39,7 @@ interface ContributorStat {
 
 interface SprintRepositoryProps {
   sprintId: string;
+  departmentId?: string | null;
 }
 
 export function SprintRepository({ sprintId }: SprintRepositoryProps) {

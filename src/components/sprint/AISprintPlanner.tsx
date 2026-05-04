@@ -73,6 +73,8 @@ interface AISprintPlannerProps {
   industry: string[];
   sprintDuration: number;
   onTasksCreated: () => void;
+  departmentId?: string | null;
+  departmentName?: string;
 }
 
 export function AISprintPlanner({
