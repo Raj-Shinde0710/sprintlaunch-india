@@ -125,10 +125,22 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
       is_founder: false,
     });
 
-    if (memberError) {
+    if (memberError && memberError.code !== "23505") {
       toast({ title: "Error adding member", description: memberError.message, variant: "destructive" });
       setProcessing(null);
       return;
+    }
+
+    // Add to selected department
+    if (app.department_id) {
+      const { error: deptError } = await supabase.from("department_members").insert({
+        department_id: app.department_id,
+        sprint_id: sprintId,
+        user_id: app.user_id,
+      });
+      if (deptError && deptError.code !== "23505") {
+        console.error("Department membership error:", deptError);
+      }
     }
 
     // Auto-activate sprint if minimum team formed (founder + 1 builder)
