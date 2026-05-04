@@ -31,6 +31,11 @@ interface SprintQuestion {
   sort_order: number;
 }
 
+interface Department {
+  id: string;
+  name: string;
+}
+
 export function ApplicationFormDialog({
   open,
   onOpenChange,
