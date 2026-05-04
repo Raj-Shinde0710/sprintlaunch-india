@@ -30,6 +30,8 @@ interface Application {
   resume_url: string | null;
   portfolio_links: string[] | null;
   answers: Record<string, string> | null;
+  department_id: string | null;
+  department: string | null;
   created_at: string | null;
   profile: {
     full_name: string | null;
