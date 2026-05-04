@@ -48,6 +48,8 @@ export function ApplicationFormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [questions, setQuestions] = useState<SprintQuestion[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
 
   const [role, setRole] = useState(requiredRoles[0] || "Builder");
   const [availabilityHours, setAvailabilityHours] = useState(10);
@@ -60,6 +62,7 @@ export function ApplicationFormDialog({
   useEffect(() => {
     if (open && sprintId) {
       fetchQuestions();
+      fetchDepartments();
     }
   }, [open, sprintId]);
 
@@ -70,6 +73,15 @@ export function ApplicationFormDialog({
       .eq("sprint_id", sprintId)
       .order("sort_order");
     if (data) setQuestions(data);
+  };
+
+  const fetchDepartments = async () => {
+    const { data } = await supabase
+      .from("departments")
+      .select("id, name")
+      .eq("sprint_id", sprintId)
+      .order("name");
+    if (data) setDepartments(data);
   };
 
   const handleResumeUpload = async (file: File) => {
