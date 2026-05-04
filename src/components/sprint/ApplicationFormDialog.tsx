@@ -202,6 +202,31 @@ export function ApplicationFormDialog({
             </div>
           </div>
 
+          {/* Department */}
+          <div>
+            <Label>Select Department *</Label>
+            {departments.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1.5">No departments available yet</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                {departments.map((d) => (
+                  <button
+                    type="button"
+                    key={d.id}
+                    onClick={() => setSelectedDepartmentId(d.id)}
+                    className={`text-left p-3 rounded-lg border text-sm transition-colors ${
+                      selectedDepartmentId === d.id
+                        ? "border-builder bg-builder/10 text-builder font-medium"
+                        : "border-border hover:border-builder/40"
+                    }`}
+                  >
+                    {d.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Availability */}
           <div>
             <Label htmlFor="availability">Availability (hours/week)</Label>
