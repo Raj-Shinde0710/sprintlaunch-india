@@ -30,6 +30,8 @@ interface Application {
   resume_url: string | null;
   portfolio_links: string[] | null;
   answers: Record<string, string> | null;
+  department_id: string | null;
+  department: string | null;
   created_at: string | null;
   profile: {
     full_name: string | null;
@@ -123,10 +125,22 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
       is_founder: false,
     });
 
-    if (memberError) {
+    if (memberError && memberError.code !== "23505") {
       toast({ title: "Error adding member", description: memberError.message, variant: "destructive" });
       setProcessing(null);
       return;
+    }
+
+    // Add to selected department
+    if (app.department_id) {
+      const { error: deptError } = await supabase.from("department_members").insert({
+        department_id: app.department_id,
+        sprint_id: sprintId,
+        user_id: app.user_id,
+      });
+      if (deptError && deptError.code !== "23505") {
+        console.error("Department membership error:", deptError);
+      }
     }
 
     // Auto-activate sprint if minimum team formed (founder + 1 builder)
@@ -285,6 +299,11 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
                             <> · Score: {app.profile.execution_score}</>
                           )}
                         </p>
+                        {app.department && (
+                          <p className="text-xs mt-1 text-builder font-medium">
+                            Applied for: {app.department} Department
+                          </p>
+                        )}
                       </div>
                     </div>
                     <Badge className={statusColors[app.status || "pending"]}>{app.status}</Badge>

@@ -31,6 +31,11 @@ interface SprintQuestion {
   sort_order: number;
 }
 
+interface Department {
+  id: string;
+  name: string;
+}
+
 export function ApplicationFormDialog({
   open,
   onOpenChange,
@@ -43,6 +48,8 @@ export function ApplicationFormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [questions, setQuestions] = useState<SprintQuestion[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
 
   const [role, setRole] = useState(requiredRoles[0] || "Builder");
   const [availabilityHours, setAvailabilityHours] = useState(10);
@@ -55,6 +62,7 @@ export function ApplicationFormDialog({
   useEffect(() => {
     if (open && sprintId) {
       fetchQuestions();
+      fetchDepartments();
     }
   }, [open, sprintId]);
 
@@ -65,6 +73,15 @@ export function ApplicationFormDialog({
       .eq("sprint_id", sprintId)
       .order("sort_order");
     if (data) setQuestions(data);
+  };
+
+  const fetchDepartments = async () => {
+    const { data } = await supabase
+      .from("departments")
+      .select("id, name")
+      .eq("sprint_id", sprintId)
+      .order("name");
+    if (data) setDepartments(data);
   };
 
   const handleResumeUpload = async (file: File) => {
@@ -108,6 +125,11 @@ export function ApplicationFormDialog({
       return;
     }
 
+    if (!selectedDepartmentId) {
+      toast({ title: "Department required", description: "Please select a department to join", variant: "destructive" });
+      return;
+    }
+
     // Validate all questions answered
     const unanswered = questions.filter((q) => !answers[q.id]?.trim());
     if (unanswered.length > 0) {
@@ -122,10 +144,14 @@ export function ApplicationFormDialog({
       .map((l) => l.trim())
       .filter(Boolean);
 
+    const selectedDept = departments.find((d) => d.id === selectedDepartmentId);
+
     const { error } = await supabase.from("sprint_applications").insert({
       user_id: user.id,
       sprint_id: sprintId,
       role,
+      department_id: selectedDepartmentId,
+      department: selectedDept?.name || null,
       availability_hours: availabilityHours,
       message,
       resume_url: resumeUrl,
@@ -174,6 +200,31 @@ export function ApplicationFormDialog({
                 </Badge>
               ))}
             </div>
+          </div>
+
+          {/* Department */}
+          <div>
+            <Label>Select Department *</Label>
+            {departments.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1.5">No departments available yet</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                {departments.map((d) => (
+                  <button
+                    type="button"
+                    key={d.id}
+                    onClick={() => setSelectedDepartmentId(d.id)}
+                    className={`text-left p-3 rounded-lg border text-sm transition-colors ${
+                      selectedDepartmentId === d.id
+                        ? "border-builder bg-builder/10 text-builder font-medium"
+                        : "border-border hover:border-builder/40"
+                    }`}
+                  >
+                    {d.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Availability */}

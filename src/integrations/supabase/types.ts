@@ -595,6 +595,7 @@ export type Database = {
           availability_hours: number | null
           created_at: string | null
           department: string | null
+          department_id: string | null
           id: string
           message: string | null
           portfolio_links: string[] | null
@@ -610,6 +611,7 @@ export type Database = {
           availability_hours?: number | null
           created_at?: string | null
           department?: string | null
+          department_id?: string | null
           id?: string
           message?: string | null
           portfolio_links?: string[] | null
@@ -625,6 +627,7 @@ export type Database = {
           availability_hours?: number | null
           created_at?: string | null
           department?: string | null
+          department_id?: string | null
           id?: string
           message?: string | null
           portfolio_links?: string[] | null
