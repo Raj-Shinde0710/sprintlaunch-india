@@ -125,6 +125,11 @@ export function ApplicationFormDialog({
       return;
     }
 
+    if (!selectedDepartmentId) {
+      toast({ title: "Department required", description: "Please select a department to join", variant: "destructive" });
+      return;
+    }
+
     // Validate all questions answered
     const unanswered = questions.filter((q) => !answers[q.id]?.trim());
     if (unanswered.length > 0) {
@@ -139,10 +144,14 @@ export function ApplicationFormDialog({
       .map((l) => l.trim())
       .filter(Boolean);
 
+    const selectedDept = departments.find((d) => d.id === selectedDepartmentId);
+
     const { error } = await supabase.from("sprint_applications").insert({
       user_id: user.id,
       sprint_id: sprintId,
       role,
+      department_id: selectedDepartmentId,
+      department: selectedDept?.name || null,
       availability_hours: availabilityHours,
       message,
       resume_url: resumeUrl,
