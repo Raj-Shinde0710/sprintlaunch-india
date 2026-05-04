@@ -28,6 +28,8 @@ import ReactMarkdown from "react-markdown";
 
 interface AIMentorProps {
   sprintId: string;
+  departmentId?: string | null;
+  departmentName?: string;
 }
 
 interface ChatMessage {

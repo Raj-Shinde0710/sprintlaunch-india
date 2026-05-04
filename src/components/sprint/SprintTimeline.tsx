@@ -28,6 +28,7 @@ interface TimelineEvent {
 
 interface SprintTimelineProps {
   sprintId: string;
+  departmentId?: string | null;
 }
 
 const eventConfig: Record<
