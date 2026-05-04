@@ -299,6 +299,11 @@ export function FounderApplicationManager({ sprintId }: FounderApplicationManage
                             <> · Score: {app.profile.execution_score}</>
                           )}
                         </p>
+                        {app.department && (
+                          <p className="text-xs mt-1 text-builder font-medium">
+                            Applied for: {app.department} Department
+                          </p>
+                        )}
                       </div>
                     </div>
                     <Badge className={statusColors[app.status || "pending"]}>{app.status}</Badge>
