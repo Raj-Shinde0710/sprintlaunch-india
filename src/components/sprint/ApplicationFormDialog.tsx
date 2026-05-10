@@ -210,7 +210,11 @@ export function ApplicationFormDialog({
           {/* Department */}
           <div>
             <Label>Select Department *</Label>
-            {departments.length === 0 ? (
+            {departmentsLoading ? (
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading departments...
+              </div>
+            ) : departments.length === 0 ? (
               <p className="text-xs text-muted-foreground mt-1.5">No departments available yet</p>
             ) : (
               <div className="grid grid-cols-2 gap-2 mt-1.5">
