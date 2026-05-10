@@ -42,7 +42,7 @@ interface Idea {
 interface FounderProfile {
   id: string;
   full_name: string | null;
-  email: string;
+  email?: string;
   location: string | null;
   is_verified: boolean | null;
   execution_score: number | null;
@@ -99,7 +99,7 @@ export default function IdeaDetail() {
     // Fetch founder profile
     const { data: founderData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, location, is_verified, execution_score, sprints_completed")
+      .select("id, full_name, location, is_verified, execution_score, sprints_completed")
       .eq("id", ideaData.founder_id)
       .maybeSingle();
     if (founderData) setFounder(founderData);
@@ -277,11 +277,11 @@ export default function IdeaDetail() {
             {founder && (
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-founder/10 flex items-center justify-center text-founder font-bold">
-                  {founder.full_name?.charAt(0) || founder.email.charAt(0)}
+                  {founder.full_name?.charAt(0) || "U"}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{founder.full_name || founder.email.split("@")[0]}</span>
+                    <span className="font-medium text-foreground">{founder.full_name || "Founder"}</span>
                     {founder.is_verified && <Verified className="w-4 h-4 text-builder" />}
                     {founder.execution_score && founder.execution_score > 70 && (
                       <Badge variant="secondary" className="text-xs">{founder.execution_score}% Execution</Badge>
