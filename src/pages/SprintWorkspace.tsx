@@ -134,6 +134,63 @@ export default function SprintWorkspace() {
     if (id) fetchSprintData();
   }, [id]);
 
+  // Re-fetch members when department changes (department-scoped)
+  useEffect(() => {
+    if (id) fetchMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, urlDepartmentId, selectedDepartmentId]);
+
+  const fetchMembers = async () => {
+    if (!id) return;
+    const deptId = urlDepartmentId || selectedDepartmentId;
+
+    let userIds: string[] = [];
+    if (deptId) {
+      const { data: deptRows } = await supabase
+        .from("department_members")
+        .select("user_id")
+        .eq("sprint_id", id)
+        .eq("department_id", deptId);
+      userIds = [...new Set((deptRows || []).map((d) => d.user_id))];
+      if (userIds.length === 0) {
+        setMembers([]);
+        return;
+      }
+    }
+
+    let q = supabase
+      .from("sprint_members")
+      .select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder")
+      .eq("sprint_id", id)
+      .is("left_at", null);
+    if (deptId) q = q.in("user_id", userIds);
+    const { data: membersData } = await q;
+
+    const memberRows = (membersData || []) as unknown as Omit<SprintMember, "profile">[];
+    if (memberRows.length === 0) {
+      setMembers([]);
+      return;
+    }
+    const ids = memberRows.map((m) => m.user_id);
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, execution_score")
+      .in("id", ids);
+    const profileById = new Map((profilesData || []).map((p) => [p.id, p]));
+    setMembers(
+      memberRows.map((m) => ({
+        ...m,
+        profile: profileById.get(m.user_id)
+          ? {
+              full_name: profileById.get(m.user_id)!.full_name,
+              avatar_url: profileById.get(m.user_id)!.avatar_url,
+              execution_score: profileById.get(m.user_id)!.execution_score,
+            }
+          : null,
+      }))
+    );
+  };
+
   const fetchSprintData = async () => {
     if (!id) return;
     const { data: sprintData, error: sprintError } = await supabase
@@ -152,28 +209,7 @@ export default function SprintWorkspace() {
     setHealth(getSprintHealth(sprintData));
     setChecklist(getSprintChecklist(sprintData));
 
-    const [{ data: membersData }, equity] = await Promise.all([
-      supabase.from("sprint_members").select("id, user_id, role, hours_committed, hours_logged, equity_share, is_founder").eq("sprint_id", id).is("left_at", null),
-      calculateEquityDistribution(id),
-    ]);
-
-    const memberRows = (membersData || []) as unknown as Omit<SprintMember, "profile">[];
-    if (memberRows.length > 0) {
-      const userIds = memberRows.map((m) => m.user_id);
-      const { data: profilesData } = await supabase.from("profiles").select("id, full_name, avatar_url, execution_score").in("id", userIds);
-      const profileById = new Map((profilesData || []).map((p) => [p.id, p]));
-      setMembers(memberRows.map((m) => ({
-        ...m,
-        profile: profileById.get(m.user_id) ? {
-          full_name: profileById.get(m.user_id)!.full_name,
-          avatar_url: profileById.get(m.user_id)!.avatar_url,
-          execution_score: profileById.get(m.user_id)!.execution_score,
-        } : null,
-      })));
-    } else {
-      setMembers([]);
-    }
-
+    const equity = await calculateEquityDistribution(id);
     setEquityDistribution(equity);
     setLoading(false);
   };
