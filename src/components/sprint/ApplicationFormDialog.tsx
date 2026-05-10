@@ -49,6 +49,7 @@ export function ApplicationFormDialog({
   const [uploading, setUploading] = useState(false);
   const [questions, setQuestions] = useState<SprintQuestion[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
 
   const [role, setRole] = useState(requiredRoles[0] || "Builder");
