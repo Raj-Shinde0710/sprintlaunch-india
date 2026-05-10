@@ -49,6 +49,7 @@ export function ApplicationFormDialog({
   const [uploading, setUploading] = useState(false);
   const [questions, setQuestions] = useState<SprintQuestion[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
 
   const [role, setRole] = useState(requiredRoles[0] || "Builder");
@@ -76,12 +77,16 @@ export function ApplicationFormDialog({
   };
 
   const fetchDepartments = async () => {
-    const { data } = await supabase
+    setDepartmentsLoading(true);
+    console.log("[ApplicationForm] Fetching departments for sprintId:", sprintId);
+    const { data, error } = await supabase
       .from("departments")
       .select("id, name")
       .eq("sprint_id", sprintId)
       .order("name");
+    console.log("[ApplicationForm] Departments result:", { data, error });
     if (data) setDepartments(data);
+    setDepartmentsLoading(false);
   };
 
   const handleResumeUpload = async (file: File) => {
@@ -205,7 +210,11 @@ export function ApplicationFormDialog({
           {/* Department */}
           <div>
             <Label>Select Department *</Label>
-            {departments.length === 0 ? (
+            {departmentsLoading ? (
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading departments...
+              </div>
+            ) : departments.length === 0 ? (
               <p className="text-xs text-muted-foreground mt-1.5">No departments available yet</p>
             ) : (
               <div className="grid grid-cols-2 gap-2 mt-1.5">
