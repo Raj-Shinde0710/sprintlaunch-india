@@ -77,12 +77,16 @@ export function ApplicationFormDialog({
   };
 
   const fetchDepartments = async () => {
-    const { data } = await supabase
+    setDepartmentsLoading(true);
+    console.log("[ApplicationForm] Fetching departments for sprintId:", sprintId);
+    const { data, error } = await supabase
       .from("departments")
       .select("id, name")
       .eq("sprint_id", sprintId)
       .order("name");
+    console.log("[ApplicationForm] Departments result:", { data, error });
     if (data) setDepartments(data);
+    setDepartmentsLoading(false);
   };
 
   const handleResumeUpload = async (file: File) => {
