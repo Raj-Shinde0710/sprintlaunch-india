@@ -209,6 +209,7 @@ export default function SprintWorkspace() {
     setHealth(getSprintHealth(sprintData));
     setChecklist(getSprintChecklist(sprintData));
 
+    await fetchMembers();
     const equity = await calculateEquityDistribution(id);
     setEquityDistribution(equity);
     setLoading(false);
