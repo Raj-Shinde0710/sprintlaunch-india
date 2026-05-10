@@ -145,36 +145,48 @@ export function SprintTaskBoard({
   };
 
   const fetchMembers = async () => {
-    const { data: membersData } = await supabase
-      .from("sprint_members")
-      .select("user_id")
-      .eq("sprint_id", sprintId)
-      .is("left_at", null);
+    let allowedUserIds: string[] | null = null;
 
-    if (membersData) {
-      const userIds = membersData.map(m => m.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", userIds);
-
-      if (profiles) {
-        // Get roles from members
-        const { data: rolesData } = await supabase
-          .from("sprint_members")
-          .select("user_id, role")
-          .eq("sprint_id", sprintId)
-          .is("left_at", null);
-
-        const roleMap = Object.fromEntries((rolesData || []).map(r => [r.user_id, r.role]));
-
-        setMembers(profiles.map(p => ({
-          user_id: p.id,
-          full_name: p.full_name,
-          role: roleMap[p.id] || "Member",
-        })));
+    if (departmentId) {
+      const { data: deptRows } = await supabase
+        .from("department_members")
+        .select("user_id")
+        .eq("sprint_id", sprintId)
+        .eq("department_id", departmentId);
+      allowedUserIds = [...new Set((deptRows || []).map((d) => d.user_id))];
+      if (allowedUserIds.length === 0) {
+        setMembers([]);
+        return;
       }
     }
+
+    let mq = supabase
+      .from("sprint_members")
+      .select("user_id, role")
+      .eq("sprint_id", sprintId)
+      .is("left_at", null);
+    if (allowedUserIds) mq = mq.in("user_id", allowedUserIds);
+    const { data: membersData } = await mq;
+
+    if (!membersData || membersData.length === 0) {
+      setMembers([]);
+      return;
+    }
+
+    const userIds = membersData.map((m) => m.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+
+    const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p.full_name]));
+    setMembers(
+      membersData.map((m) => ({
+        user_id: m.user_id,
+        full_name: profileMap[m.user_id] ?? null,
+        role: m.role || "Member",
+      }))
+    );
   };
 
   const isOverdue = (task: Task) => {
