@@ -26,7 +26,7 @@ interface SprintWorkspaceSidebarProps {
 
 const sections = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard, group: "core" },
-  { id: "planner", label: "Sprint Planner", icon: Brain, group: "core", founderOnly: true },
+  { id: "planner", label: "Sprint Planner", icon: Brain, group: "core" },
   { id: "mentor", label: "AI Mentor", icon: Bot, group: "core" },
   { id: "tasks", label: "Tasks", icon: CheckSquare, group: "execution" },
   { id: "timeline", label: "Timeline", icon: Clock, group: "execution" },
